@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>runtime.win-x64.Microsoft.Quic</PackageId>
+    <AssemblyName>runtime.win-x64.Microsoft.Quic</AssemblyName>
+    <TargetFrameworks>net5.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Microsoft.Quic</RootNamespace>
+    <LangVersion>10</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="msquic-openssl.dll">
+      <Pack>True</Pack>
+      <PackageCopyToOutput>True</PackageCopyToOutput>
+      <PackagePath>runtimes/win-x64/native/libmsquic.so</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Identity)</Link>
+    </Content>
+  </ItemGroup>
+
+    <ImportGroup>
+        <Import Project="../MsQuicVersion.proj" />
+    </ImportGroup>
+  
+  
+</Project>

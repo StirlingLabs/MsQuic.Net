@@ -1,0 +1,16 @@
+<Project>
+    <PropertyGroup>
+        <Authors>The Stirling Labs Team</Authors>
+        <Owners>Stirling Labs</Owners>
+        <Company>Stirling Labs</Company>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/StirlingLabs/MsQuic.Net.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/StirlingLabs/MsQuic.Net</PackageProjectUrl>
+        <GitDefaultBranch>main</GitDefaultBranch>
+        <GitCommitsIgnoreMerges>true</GitCommitsIgnoreMerges>
+        <VersionNetDebugImportance>high</VersionNetDebugImportance>
+    </PropertyGroup>
+    <ImportGroup>
+        <Import Project="StirlingLabs.Version/Version.proj" />
+    </ImportGroup>
+</Project>

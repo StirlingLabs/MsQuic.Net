@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>Microsoft.Quic.MsQuic.PlatformSpecific</PackageId>
+        <TargetFrameworks>net5.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Microsoft.Quic</RootNamespace>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2021.3.0" PrivateAssets="All" />
+    </ItemGroup>
+
+    <ImportGroup>
+        <Import Project="../MsQuicVersion.proj" />
+    </ImportGroup>
+
+</Project>

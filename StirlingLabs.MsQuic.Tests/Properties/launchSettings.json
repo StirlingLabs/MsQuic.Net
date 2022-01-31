@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "StirlingLabs.MsQuic.Tests": {
+      "commandName": "Project",
+      "commandLineArgs": "Test1",
+      "nativeDebugging": true
+    }
+  }
+}
