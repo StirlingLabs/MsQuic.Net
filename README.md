@@ -4,7 +4,7 @@
 
 ## 🚀 How to install
 
-If you've [configured GitHub Packages](/StirlingLabs/Logging/blob/master/docs/GitHubPackages.md), you can just:
+Configure [GitHub Packages for Stirling Labs](/StirlingLabs/Logging/blob/master/docs/GitHubPackages.md), then you can just:
 
 ```bash
 > dotnet add PROJECT package MsQuic.Net
