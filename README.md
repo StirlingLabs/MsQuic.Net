@@ -1,6 +1,6 @@
 ![MsQuic.Net](msquic-dotnet.jpg)
 
-### .Net wrapper for MsQuic
+### .Net wrapper for [MsQuic](https://github.com/microsoft/msquic)
 
 ## 🚀 How to install
 
