@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -147,6 +148,9 @@ public sealed class QuicListener : IDisposable
 
     public unsafe void Start(IPEndPoint endPoint)
     {
+        if (endPoint is null)
+            throw new ArgumentNullException(nameof(endPoint));
+
         if (!Configuration.CredentialsConfigured)
             throw new InvalidOperationException("Credentials must be configured before starting the listener.");
 
@@ -165,6 +169,9 @@ public sealed class QuicListener : IDisposable
         }
 
         var sa = sockaddr.New(endPoint);
+
+        if (endPoint.AddressFamily == AddressFamily.InterNetworkV6)
+            *(ushort*)sa = QUIC_ADDRESS_FAMILY_INET6;
 
         try
         {

@@ -29,7 +29,7 @@ public class QuicCertificateTests
 
     [TearDown]
     public void TearDown()
-        => TestContext.Progress.WriteLine($"=== End {TestContext.CurrentContext.Test.FullName} ===");
+        => TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
 
     [Test]
     [Platform("Win")]
