@@ -1,17 +1,14 @@
 using System;
-using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Quic;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
+using StirlingLabs.Utilities;
 using StirlingLabs.Utilities.Assertions;
 using static Microsoft.Quic.MsQuic;
 
@@ -27,9 +24,14 @@ public class ReliableDatagramTests
     private static QuicCertificate _cert;
     private QuicRegistration _reg = null!;
 
+    private static readonly bool IsContinuousIntegration = Common.Init
+        (() => (Environment.GetEnvironmentVariable("CI") ?? "").ToUpperInvariant() == "TRUE");
+
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
+        if (IsContinuousIntegration)
+            Trace.Listeners.Add(new ConsoleTraceListener());
 
         var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath);
         var p12Path = Path.Combine(asmDir!, "localhost.p12");
@@ -52,6 +54,8 @@ public class ReliableDatagramTests
     [SetUp]
     public void SetUp()
     {
+        TestContext.Progress.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
+
         var port = _lastPort += 1;
 
         var testName = TestContext.CurrentContext.Test.FullName;
@@ -115,6 +119,8 @@ public class ReliableDatagramTests
         _serverSide.UnobservedException += (_, info) => {
             info.Throw();
         };
+        
+        TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
     }
 
     [TearDown]
@@ -124,7 +130,10 @@ public class ReliableDatagramTests
         _clientSide.Dispose();
         _listener.Dispose();
         _reg.Dispose();
+        
+        TestContext.Progress.WriteLine($"=== End {TestContext.CurrentContext.Test.FullName} ===");
     }
+
 
     [Order(0)]
     [Test]

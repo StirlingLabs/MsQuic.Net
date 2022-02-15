@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.Quic;
 using NUnit.Framework;
+using StirlingLabs.Utilities;
 using StirlingLabs.Utilities.Assertions;
 using static Microsoft.Quic.MsQuic;
 
@@ -29,9 +30,14 @@ public class Quic0RttTests
     private ushort _port;
     private Memory<byte> _ticket;
 
+    private static readonly bool IsContinuousIntegration = Common.Init
+        (() => (Environment.GetEnvironmentVariable("CI") ?? "").ToUpperInvariant() == "TRUE");
+
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
+        if (IsContinuousIntegration)
+            Trace.Listeners.Add(new ConsoleTraceListener());
 
         var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath);
         var p12Path = Path.Combine(asmDir!, "localhost.p12");
@@ -54,6 +60,8 @@ public class Quic0RttTests
     [SetUp]
     public void SetUp()
     {
+        TestContext.Progress.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
+
         _port = _lastPort += 1;
 
         var testName = TestContext.CurrentContext.Test.FullName;
@@ -139,6 +147,8 @@ public class Quic0RttTests
                 info.Throw();
             };
         }
+
+        TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
     }
 
     [TearDown]
@@ -150,6 +160,8 @@ public class Quic0RttTests
         _listener.Dispose();
         _listenerCfg.Dispose();
         _reg.Dispose();
+
+        TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
     }
 
 

@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.IsolatedStorage;
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
+using System.Diagnostics;
 using NUnit.Framework;
 using StirlingLabs.Utilities;
 using StirlingLabs.Utilities.Assertions;
@@ -13,6 +10,24 @@ namespace StirlingLabs.MsQuic.Tests;
 [Order(2)]
 public class ReliableAcknowledgementTests
 {
+    private static readonly bool IsContinuousIntegration = Common.Init
+        (() => (Environment.GetEnvironmentVariable("CI") ?? "").ToUpperInvariant() == "TRUE");
+
+    [OneTimeSetUp]
+    public void OneTimeSetUp()
+    {
+        if (IsContinuousIntegration)
+            Trace.Listeners.Add(new ConsoleTraceListener());
+    }
+
+    [SetUp]
+    public void SetUp()
+        => TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
+
+    [TearDown]
+    public void TearDown()
+        => TestContext.Progress.WriteLine($"=== End {TestContext.CurrentContext.Test.FullName} ===");
+
     [Test]
     public void EncodingTest1()
     {
