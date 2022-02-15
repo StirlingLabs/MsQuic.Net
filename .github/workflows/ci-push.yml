@@ -1,0 +1,37 @@
+name: Integration
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    env:
+        DOTNET_NOLOGO: true
+        DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Fetch tag git metadata
+        run: git fetch --force --update-shallow --depth 1 origin +refs/tags/*:refs/tags/* || echo no tags
+      - uses: actions/setup-dotnet@v1.8.1
+        with:
+          dotnet-version: 6.0.x
+      - name: NuGet Auth
+        uses: StirlingLabs/GithubNugetAuthAction@main
+        with:
+          token: ${{secrets.DAEMON_NUGET}}
+      - name: Build
+        run: dotnet build StirlingLabs.MsQuic.sln -c Release
+      - name: Test
+        run: dotnet test StirlingLabs.MsQuic.sln --no-build -c Release --logger GitHubActions
+      - name: Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Utilities.Net
+          path: |
+            artifacts/*.nupkg
+            coverage
+          if-no-files-found: error

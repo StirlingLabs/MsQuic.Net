@@ -3,7 +3,7 @@
   <PropertyGroup>
     <PackageId>runtime.linux-x64.Microsoft.Quic</PackageId>
     <AssemblyName>runtime.linux-x64.Microsoft.Quic</AssemblyName>
-    <TargetFrameworks>net5.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
     <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>

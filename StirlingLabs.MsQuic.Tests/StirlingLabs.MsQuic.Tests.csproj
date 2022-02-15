@@ -3,10 +3,18 @@
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
         <Nullable>enable</Nullable>
-
         <IsPackable>false</IsPackable>
-
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>10</LangVersion>
+        <Authors>Stirling Labs</Authors>
+
+        <CollectCoverage>true</CollectCoverage>
+        <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+        <CoverletOutput>../coverage/</CoverletOutput>
+        <DeterministicReport>true</DeterministicReport>
+        <DeterministicSourcePaths>true</DeterministicSourcePaths>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net6.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,6 +24,10 @@
         <PackageReference Include="coverlet.collector" Version="3.1.0"/>
         <PackageReference Include="StirlingLabs.BigSpans" Version="21.8.1"/>
         <PackageReference Include="StirlingLabs.BigSpans.NUnit" Version="21.8.1"/>
+        <PackageReference Include="GitHubActionsTestLogger" Version="1.2.0" />
+        <PackageReference Include="coverlet.collector" Version="3.1.0" PrivateAssets="all" />
+        <PackageReference Include="coverlet.msbuild" Version="3.1.0" PrivateAssets="all" />
+        <PackageReference Include="ReportGenerator" Version="4.8.12" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>
@@ -30,5 +42,10 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
+
+    <Target Name="GenerateHtmlCoverageReport" AfterTargets="GenerateCoverageResultAfterTest">
+        <!-- generate markdown coverage report and badges -->
+        <ReportGenerator ReportFiles="@(CoverletReport)" ReportTypes="MarkdownSummary;Badges" SourceDirectories="../StirlingLabs.Utilities" TargetDirectory="../coverage/" />
+    </Target>
 
 </Project>

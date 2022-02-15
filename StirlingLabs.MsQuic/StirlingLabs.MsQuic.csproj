@@ -8,7 +8,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Microsoft.Quic\Microsoft.Quic.MsQuic.csproj" />
+        <ProjectReference Include="..\Microsoft.Quic\Microsoft.Quic.MsQuic.csproj">
+            <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>

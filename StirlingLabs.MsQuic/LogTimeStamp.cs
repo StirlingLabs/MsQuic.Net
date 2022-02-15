@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using StirlingLabs.Utilities;
@@ -7,6 +8,7 @@ using StirlingLabs.Utilities;
 namespace StirlingLabs.MsQuic;
 
 [PublicAPI]
+[ExcludeFromCodeCoverage]
 internal static class LogTimeStamp
 {
     public static void Init()

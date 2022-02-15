@@ -3,7 +3,7 @@
     <PropertyGroup>
         <PackageId>Microsoft.Quic</PackageId>
         <AssemblyName>Microsoft.Quic</AssemblyName>
-        <TargetFrameworks>net5.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+        <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Nullable>enable</Nullable>
         <RootNamespace>Microsoft.Quic</RootNamespace>
@@ -20,12 +20,15 @@
         <ProjectReference Include="..\Microsoft.Quic.MsQuic.Windows\Microsoft.Quic.MsQuic.Windows.csproj" />
         <ProjectReference Include="..\Microsoft.Quic.win-x64\win-x64.csproj">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
+            <ReferenceOutputAssembly>False</ReferenceOutputAssembly>
         </ProjectReference>
         <ProjectReference Include="..\Microsoft.Quic.osx-x64\osx-x64.csproj">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
+            <ReferenceOutputAssembly>False</ReferenceOutputAssembly>
         </ProjectReference>
         <ProjectReference Include="..\Microsoft.Quic.linux-x64\linux-x64.csproj">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
+            <ReferenceOutputAssembly>False</ReferenceOutputAssembly>
         </ProjectReference>
     </ItemGroup>
 

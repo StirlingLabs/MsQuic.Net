@@ -1,11 +1,14 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Quic;
 
 /// <summary>Defines the type of a member as it was used in the native signature.</summary>
-[AttributeUsage(AttributeTargets.Enum | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.ReturnValue, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(AttributeTargets.Enum | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter |
+    AttributeTargets.ReturnValue)]
 [Conditional("DEBUG")]
+[ExcludeFromCodeCoverage]
 internal sealed class NativeTypeNameAttribute : Attribute
 {
     private readonly string _name;
