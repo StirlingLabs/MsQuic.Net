@@ -2,23 +2,29 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
+using StirlingLabs.Utilities;
 
 namespace StirlingLabs.MsQuic;
 
 [PublicAPI]
-internal static class TimeStamp
+internal static class LogTimeStamp
 {
-    public static long StartUpTicks = Stopwatch.GetTimestamp();
+    public static void Init()
+    {
+        // run static init
+    }
 
-    public static long ElapsedTicks
+    public static Timestamp InitTime = Timestamp.Now;
+
+    public static double ElapsedSeconds
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Stopwatch.GetTimestamp() - StartUpTicks;
+        get => Timestamp.Now - InitTime;
     }
 
     public static TimeSpan Elapsed
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => new(ElapsedTicks);
+        get => TimeSpan.FromSeconds(ElapsedSeconds);
     }
 }

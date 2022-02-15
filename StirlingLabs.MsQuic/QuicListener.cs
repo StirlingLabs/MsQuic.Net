@@ -17,6 +17,9 @@ namespace StirlingLabs.MsQuic;
 [PublicAPI]
 public sealed class QuicListener : IDisposable
 {
+    static QuicListener()
+        => LogTimeStamp.Init();
+
     public QuicServerConfiguration Configuration { get; }
     public unsafe QUIC_HANDLE* Handle { get; private set; }
     private GcHandle<QuicListener> _gcHandle;
@@ -115,10 +118,10 @@ public sealed class QuicListener : IDisposable
                     connection.Connected += OnClientConnected;
                 else
                     OnClientConnected(connection);
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 break;
             default:
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
         }
         return 0;
@@ -206,7 +209,7 @@ public sealed class QuicListener : IDisposable
 
     private void OnNewConnection(QuicServerConnection connection)
     {
-        Trace.TraceInformation($"{TimeStamp.Elapsed} {this} event NewConnection {connection}");
+        Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} event NewConnection {connection}");
         NewConnection?.Invoke(this, connection);
     }
 
@@ -215,7 +218,7 @@ public sealed class QuicListener : IDisposable
 
     private void OnClientConnected(QuicServerConnection connection)
     {
-        Trace.TraceInformation($"{TimeStamp.Elapsed} {this} event ClientConnected {connection}");
+        Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} event ClientConnected {connection}");
         ClientConnected?.Invoke(this, connection);
         connection.Connected -= OnClientConnected;
     }
@@ -225,7 +228,7 @@ public sealed class QuicListener : IDisposable
     private void OnUnobservedException(ExceptionDispatchInfo arg)
     {
         Debug.Assert(arg != null);
-        Trace.TraceError($"{TimeStamp.Elapsed} {this} {arg.SourceException}");
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
         UnobservedException?.Invoke(this, arg);
     }
 }

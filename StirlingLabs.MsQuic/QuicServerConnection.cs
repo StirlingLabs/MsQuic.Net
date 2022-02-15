@@ -18,7 +18,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
     private readonly QuicServerConfiguration _config;
 
     public unsafe QuicServerConnection(QuicServerConfiguration config, QUIC_HANDLE* handle, QUIC_NEW_CONNECTION_INFO* info)
-        : base((config ?? throw new ArgumentNullException(nameof(config))).Registration)
+        : base((config ?? throw new ArgumentNullException(nameof(config))).Registration, config.DatagramsAreReliable)
     {
         _handle = handle;
         _config = config;
@@ -50,6 +50,16 @@ public sealed class QuicServerConnection : QuicPeerConnection
         var cb = NativeCallbackThunkPointer;
 #endif
         Registration.Table.SetCallbackHandler(handle, cb, (void*)(IntPtr)GcHandle);
+
+        if (!DatagramsAreReliable) return;
+
+        OutboundAcknowledgementStream = OpenUnidirectionalStream();
+        OutboundAcknowledgementStream.Name = "Server Outbound Reliable Acknowledgement Stream";
+        OutboundAcknowledgementStream.WaitForStartCompleteAsync()
+            .ContinueWith(t => {
+                AssertSuccess(t.Result);
+                Debug.Assert(OutboundAcknowledgementStream.Id == 3);
+            });
     }
 
 #if NET5_0_OR_GREATER
@@ -102,7 +112,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
 
                 OnConnected();
 
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
 
                 return QUIC_STATUS_SUCCESS;
             }
@@ -111,7 +121,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 //Close();
                 GcHandle.Free();
                 //RunState ?
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 return QUIC_STATUS_SUCCESS;
             }
 
@@ -122,7 +132,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 var resumptionState = new ReadOnlySpan<byte>(typedEvent.ResumptionState, length);
                 _resumptionState = new(new byte[length]);
                 resumptionState.CopyTo(_resumptionState.Span);
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{ResumptionState.Length={length}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{ResumptionState.Length={length}}}");
                 Interlocked.Exchange(ref RunState, 2);
 
                 /*
@@ -175,7 +185,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
     public override unsafe void Dispose()
         => Close();
 
-    public event EventHandler<QuicServerConnection>? Connected;
+    public event Utilities.EventHandler<QuicServerConnection>? Connected;
 
     private void OnConnected()
     {
@@ -187,5 +197,5 @@ public sealed class QuicServerConnection : QuicPeerConnection
         => QUIC_STATUS_BAD_CERTIFICATE;
 
     public override unsafe string ToString()
-        => $"[QuicServerConnection 0x{(ulong)_handle:X}]";
+        => Name is null ? $"[QuicServerConnection 0x{(ulong)_handle:X}]" : $"[QuicServerConnection \"{Name}\" 0x{(ulong)_handle:X}]";
 }

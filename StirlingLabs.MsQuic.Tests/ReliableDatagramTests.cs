@@ -18,12 +18,12 @@ using static Microsoft.Quic.MsQuic;
 namespace StirlingLabs.MsQuic.Tests;
 
 [Order(1)]
-public class RoundTripTests
+public class ReliableDatagramTests
 {
     private QuicServerConnection _serverSide = null!;
     private QuicClientConnection _clientSide = null!;
     private QuicListener _listener = null!;
-    private static ushort _lastPort = 31999;
+    private static ushort _lastPort = 34999;
     private static QuicCertificate _cert;
     private QuicRegistration _reg = null!;
 
@@ -58,7 +58,7 @@ public class RoundTripTests
 
         _reg = new(testName);
 
-        using var listenerCfg = new QuicServerConfiguration(_reg, "test");
+        using var listenerCfg = new QuicServerConfiguration(_reg, true, "test");
 
         listenerCfg.ConfigureCredentials(_cert);
 
@@ -66,11 +66,11 @@ public class RoundTripTests
 
         _listener.Start(new(IPAddress.IPv6Loopback, port));
 
-        using var clientCfg = new QuicClientConfiguration(_reg, "test");
+        using var clientCfg = new QuicClientConfiguration(_reg, true, "test");
 
         clientCfg.ConfigureCredentials();
 
-        _clientSide = new(clientCfg);
+        _clientSide = new(clientCfg) { Name = "Client" };
 
         // connection
         using var cde = new CountdownEvent(2);
@@ -86,6 +86,7 @@ public class RoundTripTests
         _listener.ClientConnected += (_, connection) => {
             serverConnected = true;
             _serverSide = connection;
+            _serverSide.Name = "Server";
             cde.Signal();
         };
 
@@ -133,129 +134,18 @@ public class RoundTripTests
     }
 
     [Test]
-    public unsafe void RoundTripSimpleStreamTest()
-    {
-        // stream round trip
-        Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
-        var dataLength = utf8Hello.Length;
-
-        using var cde = new CountdownEvent(1);
-
-        using var clientStream = _clientSide.OpenStream();
-
-        var streamOpened = false;
-
-        //clientStream.Send(utf8Hello);
-
-        QuicStream serverStream = null !;
-
-        _serverSide.IncomingStream += (_, stream) => {
-            serverStream = stream;
-            streamOpened = true;
-            cde.Signal();
-        };
-
-        cde.Wait();
-
-        Assert.True(streamOpened);
-
-        cde.Reset();
-
-        Span<byte> dataReceived = stackalloc byte[dataLength];
-
-        fixed (byte* pDataReceived = dataReceived)
-        {
-            var ptrDataReceived = (IntPtr)pDataReceived;
-
-            serverStream.DataReceived += _ => {
-
-                // ReSharper disable once VariableHidesOuterVariable
-                var dataReceived = new Span<byte>((byte*)ptrDataReceived, dataLength);
-
-                var read = serverStream.Receive(dataReceived);
-
-                Assert.AreEqual(dataLength, read);
-
-                cde.Signal();
-            };
-
-        }
-
-        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
-
-        cde.Wait();
-
-        BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
-
-        task.Wait();
-
-        Assert.True(task.IsCompletedSuccessfully);
-    }
-
-    [Test]
-    public unsafe void RoundTripSimple2StreamTest()
-    {
-        // stream round trip
-        Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
-        var dataLength = utf8Hello.Length;
-
-        using var cde = new CountdownEvent(1);
-
-        using var clientStream = _clientSide.OpenStream();
-
-        var streamOpened = false;
-
-        //clientStream.Send(utf8Hello);
-
-        QuicStream serverStream = null !;
-
-        _serverSide.IncomingStream += (_, stream) => {
-            serverStream = stream;
-            streamOpened = true;
-            cde.Signal();
-        };
-
-        cde.Wait();
-
-        Assert.True(streamOpened);
-
-        cde.Reset();
-
-        serverStream.DataReceived += _ => {
-            cde.Signal();
-        };
-
-        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
-
-        cde.Wait();
-
-        Span<byte> dataReceived = stackalloc byte[dataLength];
-
-        var read = serverStream.Receive(dataReceived);
-
-        Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {serverStream} Completed Receive");
-
-        Assert.AreEqual(dataLength, read);
-
-        BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
-
-        task.Wait();
-
-        Assert.True(task.IsCompletedSuccessfully);
-    }
-
-    [Test]
     public void RoundTripDatagramTest()
     {
         // datagram round trip
         Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
 
-        using var datagram = new QuicDatagramManagedMemory(_clientSide, utf8Hello);
+        using var datagram = (QuicDatagramReliable)QuicDatagram.Create(_clientSide, utf8Hello);
 
-        using var cde = new CountdownEvent(3);
+        using var cde = new CountdownEvent(4);
         var dgSent = false;
         var dgAcknowledged = false;
         var dgReceived = false;
+        var dgReliablyAcknowledged = false;
 
         datagram.StateChanged += (_, state) => {
             switch (state)
@@ -286,6 +176,11 @@ public class RoundTripTests
             cde.Signal();
         };
 
+        datagram.ReliablyAcknowledged += _ => {
+            dgReliablyAcknowledged = true;
+            cde.Signal();
+        };
+
         _clientSide.SendDatagram(datagram);
 
         cde.Wait();
@@ -293,6 +188,7 @@ public class RoundTripTests
         Assert.True(dgSent);
         Assert.True(dgAcknowledged);
         Assert.True(dgReceived);
+        Assert.True(dgReliablyAcknowledged);
     }
 
 
@@ -302,7 +198,7 @@ public class RoundTripTests
         // datagram round trip
         Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
 
-        using var dg = new QuicDatagramManagedMemory(_clientSide, utf8Hello);
+        using var dg = QuicDatagram.Create(_clientSide, utf8Hello);
 
         using var cde = new CountdownEvent(3);
         var dgSent = false;

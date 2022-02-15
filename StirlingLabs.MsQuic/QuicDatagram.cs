@@ -1,10 +1,14 @@
 using System;
+using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Quic;
+using StirlingLabs.Utilities;
 
 namespace StirlingLabs.MsQuic;
 
@@ -28,6 +32,35 @@ public abstract class QuicDatagram
         GcHandle = GCHandle.Alloc(this);
         Connection = connection;
         State = state;
+    }
+
+    public static QuicDatagram Create(QuicPeerConnection connection, Memory<byte> data)
+    {
+        if (connection is null)
+            throw new ArgumentNullException(nameof(connection));
+
+        return connection.DatagramsAreReliable
+            ? new QuicDatagramManagedMemoryReliable(connection, data)
+            : new QuicDatagramManagedMemory(connection, data);
+    }
+    public static QuicDatagram Create(QuicPeerConnection connection, IMemoryOwner<byte> owner, Memory<byte> data)
+    {
+        if (connection is null)
+            throw new ArgumentNullException(nameof(connection));
+
+        return connection.DatagramsAreReliable
+            ? new QuicDatagramOwnedManagedMemoryReliable(connection, owner, data)
+            : new QuicDatagramOwnedManagedMemory(connection, owner, data);
+    }
+    // 
+    public static unsafe QuicDatagram Create(QuicPeerConnection connection, byte* pExternalMemStart, uint externalMemLength, Action<IntPtr> freeCallback)
+    {
+        if (connection is null)
+            throw new ArgumentNullException(nameof(connection));
+
+        return connection.DatagramsAreReliable
+            ? new QuicDatagramExternalMemoryReliable(connection, pExternalMemStart, externalMemLength, freeCallback)
+            : new QuicDatagramExternalMemory(connection, pExternalMemStart, externalMemLength, freeCallback);
     }
 
     public Task WaitForSentAsync() => _tcsSent.Task;
@@ -118,6 +151,8 @@ public abstract class QuicDatagram
         _tcsSent.TrySetCanceled();
         _tcsAcknowledged.TrySetCanceled();
         GcHandle.Free();
+
+        GC.SuppressFinalize(this);
     }
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
@@ -131,4 +166,15 @@ public abstract class QuicDatagram
     public bool IsAcknowledged { get; private set; }
     public bool IsLost { get; private set; }
     public bool IsDiscarded { get; private set; }
+
+
+    [SuppressMessage("Design", "CA1003", Justification = "Done")]
+    public event EventHandler<QuicDatagram, ExceptionDispatchInfo>? UnobservedException;
+
+    protected void OnUnobservedException(ExceptionDispatchInfo arg)
+    {
+        Debug.Assert(arg != null);
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
+        UnobservedException?.Invoke(this, arg);
+    }
 }

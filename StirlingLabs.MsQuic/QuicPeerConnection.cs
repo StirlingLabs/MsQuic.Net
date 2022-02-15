@@ -1,9 +1,10 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
@@ -13,17 +14,28 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using JetBrains.Annotations;
 using Microsoft.Quic;
+using StirlingLabs.Native;
 using StirlingLabs.Utilities;
 using static Microsoft.Quic.MsQuic;
+using NativeMemory = StirlingLabs.Native.NativeMemory;
 
 namespace StirlingLabs.MsQuic;
 
+/*
+ * ack stream pair will be streams 0 (and 1?) unidirectional both ways
+ * at ack time intervals encode to fit max dg send size (frame size needed?)
+ * 
+ */
+
 [PublicAPI]
-public abstract class QuicPeerConnection : IDisposable
+public abstract partial class QuicPeerConnection : IDisposable
 {
-    protected QuicRegistration Registration { get; }
+    static QuicPeerConnection()
+        => LogTimeStamp.Init();
 
     protected unsafe QUIC_HANDLE* _handle;
+
+    private int _maxSendLength;
 
     public unsafe QUIC_HANDLE* Handle
     {
@@ -41,16 +53,38 @@ public abstract class QuicPeerConnection : IDisposable
     protected Memory<byte> _resumptionTicket;
     protected Memory<byte> _resumptionState;
 
+    protected QuicPeerConnection(QuicRegistration registration, bool reliableDatagrams)
+    {
+        DatagramsAreReliable = reliableDatagrams;
+        Registration = registration;
+        GcHandle = GCHandle.Alloc(this);
+    }
+
+    public string? Name { get; set; }
+
+    protected QuicRegistration Registration { get; }
+
     public ushort IdealProcessor { get; protected set; }
     public bool DatagramsAllowed { get; protected set; }
-    public ushort MaxSendLength { get; protected set; }
+
+    public ushort MaxSendLength
+    {
+        get {
+            var maxSendLength = Interlocked.CompareExchange(ref _maxSendLength, 0, 0);
+            return checked((ushort)(DatagramsAreReliable
+                ? maxSendLength - VarIntSqlite4.GetEncodedLength(_reliableIdCounter + 120)
+                : maxSendLength));
+        }
+
+        protected set => Interlocked.Exchange(ref _maxSendLength, value);
+    }
 
     public bool IsResumed { get; protected set; }
     public SizedUtf8String NegotiatedAlpn { get; protected set; }
     public SizedUtf8String ServerName { get; protected set; }
 
-    public IPEndPoint LocalEndPoint { get; protected set; }
-    public IPEndPoint RemoteEndPoint { get; protected set; }
+    public IPEndPoint LocalEndPoint { get; protected set; } = null!;
+    public IPEndPoint RemoteEndPoint { get; protected set; } = null!;
 
     public ushort AllowedBidirectionalStreams { get; protected set; }
     public ushort AllowedUnidirectionalStreams { get; protected set; }
@@ -59,26 +93,24 @@ public abstract class QuicPeerConnection : IDisposable
 
     public bool ReceiveDatagramsAsync { get; set; }
 
-    public X509Certificate2 Certificate { get; protected set; }
+    public X509Certificate2 Certificate { get; protected set; } = null!;
 
-    public SignedCms CertificateChain { get; protected set; }
-
-    protected QuicPeerConnection(QuicRegistration registration)
-    {
-        Registration = registration;
-        GcHandle = GCHandle.Alloc(this);
-    }
+    public SignedCms CertificateChain { get; protected set; } = null!;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected bool AddStream(QuicStream stream)
+    protected bool AddStream(QuicStream stream, bool local = false)
     {
+        if (local)
+        {
+            var result = _streams.TryAdd(stream, null);
+            Debug.Assert(result);
+            return result;
+        }
         // ReSharper disable once InvertIf
         if (Interlocked.CompareExchange(ref RunState, 0, 0) != 0
             && _streams.TryAdd(stream, null))
-        {
-            _unhandledStreams.Enqueue(stream);
             return true;
-        }
+        _unhandledStreams.Enqueue(stream);
         return false;
     }
 
@@ -96,10 +128,14 @@ public abstract class QuicPeerConnection : IDisposable
         get => Interlocked.CompareExchange(ref RunState, 0, 0) != 0;
     }
 
-    public unsafe void Shutdown()
+    public unsafe void Shutdown(bool silent = false)
     {
         if (Registration.Disposed) return;
-        Registration.Table.ConnectionShutdown(Handle, QUIC_CONNECTION_SHUTDOWN_FLAGS.QUIC_CONNECTION_SHUTDOWN_FLAG_NONE, 0);
+
+        Registration.Table.ConnectionShutdown(Handle,
+            silent
+                ? QUIC_CONNECTION_SHUTDOWN_FLAGS.QUIC_CONNECTION_SHUTDOWN_FLAG_SILENT
+                : QUIC_CONNECTION_SHUTDOWN_FLAGS.QUIC_CONNECTION_SHUTDOWN_FLAG_NONE, 0);
     }
 
     public unsafe void Close()
@@ -112,23 +148,48 @@ public abstract class QuicPeerConnection : IDisposable
 
     public QuicDatagram SendDatagram(Memory<byte> data)
     {
-#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-        if (MemoryMarshal.TryGetMemoryManager<byte, MemoryManager<byte>>(data, out var mgr))
+        // TODO: reliable path
+        if (DatagramsAreReliable)
         {
-            var dg = new QuicDatagramOwnedManagedMemory(this, mgr);
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+            if (MemoryMarshal.TryGetMemoryManager<byte, MemoryManager<byte>>(data, out var mgr))
+            {
+                var dg = new QuicDatagramOwnedManagedMemoryReliable(this, mgr);
 
-            SendDatagram(dg);
+                SendDatagram(dg);
 
-            return dg;
+                return dg;
+            }
+            else
+#endif
+            {
+                var dg = new QuicDatagramManagedMemoryReliable(this, data);
+
+                SendDatagram(dg);
+
+                return dg;
+            }
         }
         else
-#endif
         {
-            var dg = new QuicDatagramManagedMemory(this, data);
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+            if (MemoryMarshal.TryGetMemoryManager<byte, MemoryManager<byte>>(data, out var mgr))
+            {
+                var dg = new QuicDatagramOwnedManagedMemory(this, mgr);
 
-            SendDatagram(dg);
+                SendDatagram(dg);
 
-            return dg;
+                return dg;
+            }
+            else
+#endif
+            {
+                var dg = new QuicDatagramManagedMemory(this, data);
+
+                SendDatagram(dg);
+
+                return dg;
+            }
         }
     }
 
@@ -138,17 +199,62 @@ public abstract class QuicPeerConnection : IDisposable
 
         var pBuf = dg.GetBuffer();
 
-        var status = Registration.Table.DatagramSend(Handle, pBuf, 1, dg.Flags, (void*)GCHandle.ToIntPtr(dg.GcHandle));
+        // reliable case:
+        // @formatter:off
+        if (dg is QuicDatagramReliable dgr) lock (dgr.Lock)
+        { // @formatter:on
+            if (!DatagramsAreReliable)
+                throw new("Must use plain (non-reliable) datagrams for this connection.");
 
-        if (status != QUIC_STATUS_PENDING)
-            AssertSuccess(status);
+            var header = &pBuf[0];
+            if (header->Buffer != null)
+            {
+                NativeMemory.Free(header->Buffer);
+                header->Length = 0;
+            }
 
-        return dg;
+            var id = dgr.Id;
+            var size = (uint)VarIntSqlite4.GetEncodedLength(id);
+            header->Buffer = (byte*)NativeMemory.New(size);
+            header->Length = size;
+            var check = VarIntSqlite4.Encode(id, header->Span);
+            Debug.Assert(size == check);
+
+            _reliableDatagramsSentUnacknowledged.Add(id, dgr);
+
+            var status = Registration.Table.DatagramSend(Handle, pBuf, 2, dg.Flags, (void*)GCHandle.ToIntPtr(dg.GcHandle));
+
+            if (status != QUIC_STATUS_PENDING)
+                AssertSuccess(status);
+
+            return dg;
+        }
+
+        // non-reliable case:
+        {
+            if (DatagramsAreReliable)
+                throw new("Must use reliable datagrams for this connection.");
+
+            var status = Registration.Table.DatagramSend(Handle, pBuf, 1, dg.Flags, (void*)GCHandle.ToIntPtr(dg.GcHandle));
+
+            if (status != QUIC_STATUS_PENDING)
+                AssertSuccess(status);
+
+            return dg;
+        }
     }
     public QuicStream OpenStream(bool notStarted = false)
     {
         var stream = new QuicStream(Registration, this);
-        AddStream(stream);
+        AddStream(stream, true);
+        if (!notStarted)
+            stream.Start();
+        return stream;
+    }
+    public QuicStream OpenUnidirectionalStream(bool notStarted = false)
+    {
+        var stream = new QuicStream(Registration, this, QUIC_STREAM_OPEN_FLAGS.QUIC_STREAM_OPEN_FLAG_UNIDIRECTIONAL);
+        AddStream(stream, true);
         if (!notStarted)
             stream.Start();
         return stream;
@@ -159,23 +265,81 @@ public abstract class QuicPeerConnection : IDisposable
 
     protected void OnIncomingStream(QuicStream stream)
     {
-        Debug.Assert(IncomingStream is not null);
-        IncomingStream?.Invoke(this, stream);
+        if (DatagramsAreReliable && InboundAcknowledgementStream is null)
+        {
+            Debug.Assert(IncomingStream is null);
+            InboundAcknowledgementStream = stream;
+            WireUpInboundAcknowledgementStream();
+        }
+        else
+        {
+            Debug.Assert(IncomingStream is not null);
+            IncomingStream?.Invoke(this, stream);
+        }
     }
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
     public event ReadOnlySpanEventHandler<QuicPeerConnection, byte>? DatagramReceived;
+
+    private ConcurrentDictionary<ulong, Timestamp> _seenIds = new();
+    private ConcurrentDictionary<ulong, Timestamp> _ackdIds = new();
 
     [SuppressMessage("Design", "CA1031", Justification = "Exception is handed off")]
     protected void OnDatagramReceived(ReadOnlySpan<byte> data)
     {
         try
         {
-            DatagramReceived?.Invoke(this, data);
+            Debug.Assert(data.Length > 0);
+            if (!DatagramsAreReliable)
+                DatagramReceived?.Invoke(this, data);
+            else
+            {
+                var header = VarIntSqlite4.GetDecodedLength(data[0]);
+                var id = VarIntSqlite4.Decode(data);
+                if (!_ackdIds.TryGetValue(id, out var prevSeen))
+                    _seenIds.AddOrUpdate(id, _ => Timestamp.Now,
+                        (_, prevSeenVal) => {
+                            prevSeen = prevSeenVal;
+                            return Timestamp.Now;
+                        });
+
+                if (prevSeen == default)
+                {
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id}");
+                    DatagramReceived?.Invoke(this, data.Slice(header));
+                }
+                else
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id} [Retransmit {prevSeen}]");
+            }
         }
         catch (Exception ex)
         {
             OnUnobservedException(ExceptionDispatchInfo.Capture(ex));
+        }
+        finally
+        {
+            ReliableDatagramAcknowledgementInterval ??= new(
+                ReliableDatagramAcknowledgementIntervalTime.TotalSeconds,
+                GenerateReliableDatagramAcknowledgments);
+        }
+    }
+    private bool GenerateReliableDatagramAcknowledgments()
+    {
+        lock (_reliableDatagramAckLock)
+        {
+            var ids = _seenIds.Keys.ToArray();
+            foreach (var id in ids)
+                if (_seenIds.TryGetValue(id, out var seen))
+                    _ackdIds[id] = seen;
+            var toAck = new SortedSet<ulong>(ids);
+            if (TrySendDatagramAcks(toAck))
+            {
+                foreach (var id in ids)
+                    if (!toAck.Contains(id))
+                        _seenIds.TryRemove(id, out _);
+                return true;
+            }
+            return true;
         }
     }
 
@@ -191,7 +355,31 @@ public abstract class QuicPeerConnection : IDisposable
                     var context = ((QuicPeerConnection, ReadOnlySpanEventHandler<QuicPeerConnection, byte>, byte[]))state!;
                     try
                     {
-                        context.Item2(context.Item1, data);
+                        Debug.Assert(data.Length > 0);
+                        if (!DatagramsAreReliable)
+                            context.Item2(context.Item1, data);
+                        else
+                        {
+                            var header = VarIntSqlite4.GetDecodedLength(data[0]);
+                            var id = VarIntSqlite4.Decode(data);
+                            Timestamp prevSeen = default;
+                            _seenIds.AddOrUpdate(id, _ => Timestamp.Now,
+                                (_, prevSeenVal) => {
+                                    prevSeen = prevSeenVal;
+                                    return Timestamp.Now;
+                                });
+
+                            var length = data.Length - header;
+
+                            if (prevSeen == default)
+                            {
+                                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Async Received Reliable Datagram #{id}");
+                                context.Item2(context.Item1, new(data, header, length));
+                            }
+                            else
+                                Trace.TraceInformation(
+                                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} Async Received Reliable Datagram #{id} [Retransmit {prevSeen}]");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -213,21 +401,22 @@ public abstract class QuicPeerConnection : IDisposable
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED: {
                 ref var typedEvent = ref @event.PEER_STREAM_STARTED;
                 var stream = new QuicStream(Registration, this, typedEvent.Stream, typedEvent.Flags);
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Pending");
                 if (!AddStream(stream))
                 {
                     stream.Reject();
-                    Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Rejected");
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Rejected");
                     return QUIC_STATUS_ABORTED;
                 }
                 OnIncomingStream(stream);
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Accepted");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Accepted");
                 return QUIC_STATUS_SUCCESS;
             }
 
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_IDEAL_PROCESSOR_CHANGED: {
                 ref var typedEvent = ref @event.IDEAL_PROCESSOR_CHANGED;
                 IdealProcessor = typedEvent.IdealProcessor;
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{IdealProcessor={IdealProcessor}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{IdealProcessor={IdealProcessor}}}");
                 return QUIC_STATUS_SUCCESS;
             }
 
@@ -235,7 +424,7 @@ public abstract class QuicPeerConnection : IDisposable
                 ref var typedEvent = ref @event.DATAGRAM_RECEIVED;
 
                 Trace.TraceInformation(
-                    $"{TimeStamp.Elapsed} {TimeStamp.Elapsed} {this} {@event.Type} {{ReceiveDatagramsAsync={ReceiveDatagramsAsync}}}");
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{ReceiveDatagramsAsync={ReceiveDatagramsAsync}}}");
 
                 if (ReceiveDatagramsAsync)
                 {
@@ -258,7 +447,7 @@ public abstract class QuicPeerConnection : IDisposable
 
                 dg.State = typedEvent.State;
 
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{QuicDatagram={{{dg}}}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{QuicDatagram={{{dg}}}}}");
 
                 return QUIC_STATUS_SUCCESS;
             }
@@ -267,43 +456,43 @@ public abstract class QuicPeerConnection : IDisposable
                 DatagramsAllowed = typedEvent.SendEnabled != 0;
                 MaxSendLength = typedEvent.MaxSendLength;
                 Trace.TraceInformation(
-                    $"{TimeStamp.Elapsed} {this} {@event.Type} {{DatagramsAllowed={DatagramsAllowed},MaxSendLength={MaxSendLength}}}");
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{DatagramsAllowed={DatagramsAllowed},MaxSendLength={MaxSendLength}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_LOCAL_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
                 LocalEndPoint = sockaddr.Read(typedEvent.Address);
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{LocalEndPoint={LocalEndPoint}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LocalEndPoint={LocalEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
                 RemoteEndPoint = sockaddr.Read(typedEvent.Address);
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{RemoteEndPoint={RemoteEndPoint}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{RemoteEndPoint={RemoteEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             // client only
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED: {
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             }
             // server only
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMED: {
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             }
 
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_CONNECTED:
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
 
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_STREAMS_AVAILABLE: {
@@ -311,12 +500,12 @@ public abstract class QuicPeerConnection : IDisposable
                 AllowedBidirectionalStreams = typedEvent.BidirectionalCount;
                 AllowedUnidirectionalStreams = typedEvent.UnidirectionalCount;
                 Trace.TraceInformation(
-                    $"{TimeStamp.Elapsed} {this} {@event.Type} {{AllowedBidirectionalStreams={AllowedBidirectionalStreams},AllowedBidirectionalStreams={AllowedUnidirectionalStreams}}}");
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{AllowedBidirectionalStreams={AllowedBidirectionalStreams},AllowedBidirectionalStreams={AllowedUnidirectionalStreams}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_NEEDS_STREAMS: {
                 LimitingRemoteStreams = true;
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{LimitingRemoteStreams={LimitingRemoteStreams}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LimitingRemoteStreams={LimitingRemoteStreams}}}");
                 break;
             }
 
@@ -341,7 +530,7 @@ public abstract class QuicPeerConnection : IDisposable
                 var cert = new X509Certificate2(certBytes);
 #endif
 
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
 
 #if TRACE_CERTIFICATES
                 Trace.TraceInformation("===== BEGIN CERTIFICATE INFORMATION =====");
@@ -360,12 +549,12 @@ public abstract class QuicPeerConnection : IDisposable
                 }
                 Trace.TraceInformation("===== END CERTIFICATE CHAIN INFORMATION =====");
 #endif
-                this.Certificate = cert;
-                this.CertificateChain = chainContainer;
+                Certificate = cert;
+                CertificateChain = chainContainer;
 
                 var status = OnCertificateReceived(cert, chainContainer, typedEvent.DeferredErrorFlags, typedEvent.DeferredStatus);
 
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{Result={GetNameForStatus(status)}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{Result={GetNameForStatus(status)}}}");
 
                 return status;
 
@@ -373,14 +562,14 @@ public abstract class QuicPeerConnection : IDisposable
 
             default:
                 // ???
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} Unhandled");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
         }
 
         return QUIC_STATUS_SUCCESS;
     }
 
-    public EventHandler<QuicPeerConnection>? ResumptionTicketReceived;
+    public Utilities.EventHandler<QuicPeerConnection>? ResumptionTicketReceived;
 
     protected void OnResumptionTicketReceived()
         => ResumptionTicketReceived?.Invoke(this);
@@ -403,7 +592,7 @@ public abstract class QuicPeerConnection : IDisposable
         int deferredStatus
     )
     {
-        Trace.TraceInformation($"{TimeStamp.Elapsed} {this} event CertificateReceived");
+        Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} event CertificateReceived");
         var status = CertificateReceived?.Invoke(
             this,
             cert,
@@ -437,10 +626,13 @@ public abstract class QuicPeerConnection : IDisposable
 
     public event EventHandler<QuicPeerConnection, ExceptionDispatchInfo>? UnobservedException;
 
-    protected virtual void OnUnobservedException(ExceptionDispatchInfo arg)
+    protected internal virtual void OnUnobservedException(ExceptionDispatchInfo arg)
     {
         Debug.Assert(arg != null);
-        Trace.TraceError($"{TimeStamp.Elapsed} {this} {arg.SourceException}");
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
         UnobservedException?.Invoke(this, arg);
     }
+
+    protected QuicStream? InboundAcknowledgementStream { get; set; }
+    protected QuicStream? OutboundAcknowledgementStream { get; set; }
 }

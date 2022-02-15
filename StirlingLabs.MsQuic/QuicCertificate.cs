@@ -14,6 +14,9 @@ namespace StirlingLabs.MsQuic;
 
 public struct QuicCertificate
 {
+    static QuicCertificate()
+        => LogTimeStamp.Init();
+
     public QUIC_CERTIFICATE_PKCS12 Pkcs12;
     private GCHandle _pin;
     private bool _ownedMemory;
@@ -231,7 +234,7 @@ public struct QuicCertificate
                 }
             });
 #else
-            var noncePasswordBuilder = new StringBuilder();
+            var noncePasswordBuilder = new StringBuilder(32) { Length = 32 };
             using var rng = RandomNumberGenerator.Create();
             var byteBuf = new byte[32];
             rng.GetBytes(byteBuf);

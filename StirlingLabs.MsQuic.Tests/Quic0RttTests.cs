@@ -164,7 +164,7 @@ public class Quic0RttTests
 
         using var clientStream = _clientSide.OpenStream(true);
 
-        Debug.Assert(!clientStream.Started);
+        Debug.Assert(!clientStream.IsStarted);
 
         var streamOpened = false;
         var was0Rtt = false;
@@ -212,7 +212,7 @@ public class Quic0RttTests
 
         Assert.True(was0Rtt);
 
-        Trace.TraceInformation($"{TimeStamp.Elapsed} {serverStream} Completed Receive");
+        Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {serverStream} Completed Receive");
 
         Assert.AreEqual(dataLength, read);
 

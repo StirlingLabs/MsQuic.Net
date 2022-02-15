@@ -1,7 +1,5 @@
 using System;
-using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -21,7 +19,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
     public ref readonly QuicClientConfiguration Configuration => ref _config;
 
     public unsafe QuicClientConnection(QuicClientConfiguration config)
-        : base((config ?? throw new ArgumentNullException(nameof(config))).Registration)
+        : base((config ?? throw new ArgumentNullException(nameof(config))).Registration, config.DatagramsAreReliable)
     {
         _config = config;
 
@@ -46,6 +44,12 @@ public sealed class QuicClientConnection : QuicPeerConnection
         }
 
         _handle = handle;
+
+        if (!DatagramsAreReliable) return;
+
+        OutboundAcknowledgementStream = OpenUnidirectionalStream();
+        OutboundAcknowledgementStream.Name = "Client Outbound Reliable Acknowledgement Stream";
+        Debug.Assert(OutboundAcknowledgementStream.Id == 2);
     }
 
 
@@ -100,7 +104,8 @@ public sealed class QuicClientConnection : QuicPeerConnection
 
                 OnConnected();
 
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
+                Trace.TraceInformation(
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
 
                 return 0;
             }
@@ -108,10 +113,9 @@ public sealed class QuicClientConnection : QuicPeerConnection
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
                 Interlocked.Exchange(ref RunState, 0);
                 GcHandle.Free();
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 return 0;
-            
-            
+
             // client only
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED: {
                 ref var typedEvent = ref @event.RESUMPTION_TICKET_RECEIVED;
@@ -119,7 +123,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
                 var resumptionTicket = new ReadOnlySpan<byte>(typedEvent.ResumptionTicket, length);
                 _resumptionTicket = new(new byte[length]);
                 resumptionTicket.CopyTo(_resumptionTicket.Span);
-                Trace.TraceInformation($"{TimeStamp.Elapsed} {this} {@event.Type} {{ResumptionTicket.Length={length}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{ResumptionTicket.Length={length}}}");
                 OnResumptionTicketReceived();
                 Interlocked.Exchange(ref RunState, 2);
                 return QUIC_STATUS_SUCCESS;
@@ -128,7 +132,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
         return DefaultManagedCallback(ref @event);
     }
 
-    public event EventHandler<QuicClientConnection>? Connected;
+    public event Utilities.EventHandler<QuicClientConnection>? Connected;
 
     private void OnConnected()
         => Connected?.Invoke(this);
@@ -181,5 +185,5 @@ public sealed class QuicClientConnection : QuicPeerConnection
         => QUIC_STATUS_SUCCESS;
 
     public override unsafe string ToString()
-        => $"[QuicClientConnection 0x{(ulong)_handle:X}]";
+        => Name is null ? $"[QuicClientConnection 0x{(ulong)_handle:X}]" : $"[QuicClientConnection \"{Name}\" 0x{(ulong)_handle:X}]";
 }

@@ -12,6 +12,11 @@ namespace StirlingLabs.MsQuic;
 public sealed class QuicClientConfiguration : QuicPeerConfiguration
 {
     public readonly SizedUtf8String[] Alpns;
+
+    public QuicClientConfiguration(QuicRegistration registration, bool reliableDatagrams, params SizedUtf8String[] alpns)
+        : this(registration, alpns)
+        => DatagramsAreReliable = reliableDatagrams;
+
     public unsafe QuicClientConfiguration(QuicRegistration registration, params SizedUtf8String[] alpns)
         : base(registration)
     {
@@ -146,4 +151,6 @@ public sealed class QuicClientConfiguration : QuicPeerConfiguration
 
         CredentialsConfigured = true;
     }
+
+    public bool DatagramsAreReliable { get; }
 }
