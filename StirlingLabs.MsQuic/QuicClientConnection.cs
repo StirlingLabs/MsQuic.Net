@@ -146,7 +146,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
             throw new InvalidOperationException("Already connecting.");
 
         var status = Registration.Table.ConnectionStart(Handle, _config.Handle,
-            QUIC_ADDRESS_FAMILY_UNSPEC, (byte*)name.Pointer, port);
+            (ushort)sockaddr.AF_UNSPEC, name.Pointer, port);
 
         if (IsPending(status)) return;
 
@@ -159,7 +159,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
             throw new InvalidOperationException("Already connecting.");
 
         var status = Registration.Table.ConnectionStart(Handle, _config.Handle,
-            QUIC_ADDRESS_FAMILY_UNSPEC, (byte*)name.Pointer, port);
+            (ushort)sockaddr.AF_UNSPEC, name.Pointer, port);
 
         if (IsSuccess(status))
             return Task.CompletedTask;

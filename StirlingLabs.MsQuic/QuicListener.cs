@@ -168,24 +168,40 @@ public sealed class QuicListener : IDisposable
             quicAlpn.Length = (uint)alpn.Length;
         }
 
-        var sa = sockaddr.New(endPoint);
+        sockaddr* sa = null;
 
-        if (endPoint.AddressFamily == AddressFamily.InterNetworkV6)
-            *(ushort*)sa = QUIC_ADDRESS_FAMILY_INET6;
+        switch (endPoint.AddressFamily)
+        {
+            case AddressFamily.Unspecified: {
+                sa = sockaddr.CreateUnspec(checked((ushort)endPoint.Port));
+                break;
+            }
+            case AddressFamily.InterNetwork: {
+                sa = sockaddr.CreateIPv4(endPoint.Address.ToString(), checked((ushort)endPoint.Port));
+                break;
+            }
+            case AddressFamily.InterNetworkV6: {
+                sa = sockaddr.CreateIPv6(endPoint.Address.ToString(), checked((ushort)endPoint.Port));
+                break;
+            }
+        }
+
+        if (sa == null)
+            throw new NotImplementedException();
 
         try
         {
             fixed (QUIC_BUFFER* pQuicAlpns = quicAlpns)
             {
                 AssertSuccess(
-                    Registration.Table.ListenerStart(Handle, pQuicAlpns, 1, sa));
+                    Registration.Table.ListenerStart(Handle, pQuicAlpns, 1, (Microsoft.Quic.sockaddr*)sa));
             }
 
             Interlocked.Exchange(ref _runState, 2);
         }
         finally
         {
-            sockaddr.Free(sa);
+            sa->Free();
         }
     }
 

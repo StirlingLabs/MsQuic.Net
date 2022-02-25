@@ -1,3 +1,4 @@
+#nullable enable
 //
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -14,7 +15,7 @@ namespace Microsoft.Quic;
 
 [PublicAPI]
 [SuppressMessage("Security", "CA5392", Justification = "Manual initialization")]
-[SuppressMessage("Design", "CA1060", Justification = "Generated code")]
+[SuppressMessage("Design", "CA1060", Justification = "They're in generated code")]
 public partial class MsQuic
 {
     public const string LibName = "msquic-openssl";
@@ -48,7 +49,7 @@ public partial class MsQuic
     public static unsafe QUIC_API_TABLE* Open()
     {
         QUIC_API_TABLE* apiTable;
-        AssertSuccess(MsQuicOpenVersion(1, (void**)&apiTable));
+        AssertSuccess(MsQuicOpenVersion(2, (void**)&apiTable));
         return apiTable;
     }
 
@@ -96,7 +97,7 @@ public partial class MsQuic
         => MsQuicStatusBaseImpl.ResolveNameToStatus(name);
 
     // ReSharper disable InconsistentNaming
-    public static readonly int QUIC_STATUS_SUCCESS = 0;
+    public static readonly int QUIC_STATUS_SUCCESS;
     public static readonly int QUIC_STATUS_PENDING = ResolveNameToStatus(nameof(QUIC_STATUS_PENDING));
     public static readonly int QUIC_STATUS_CONTINUE = ResolveNameToStatus(nameof(QUIC_STATUS_CONTINUE));
     public static readonly int QUIC_STATUS_OUT_OF_MEMORY = ResolveNameToStatus(nameof(QUIC_STATUS_OUT_OF_MEMORY));

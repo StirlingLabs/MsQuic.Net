@@ -20,6 +20,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Quic.MsQuic.Windo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Quic.MsQuic.PlatformSpecific", "Microsoft.Quic.MsQuic.PlatformSpecific\Microsoft.Quic.MsQuic.PlatformSpecific.csproj", "{28303EE3-E0C9-436B-AAF2-C64E02CEB705}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github", "github", "{68B5C4A1-7B53-429E-91CB-04865236A88E}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\cd.yml = .github\workflows\cd.yml
+		.github\workflows\ci-pr.yml = .github\workflows\ci-pr.yml
+		.github\workflows\ci-push.yml = .github\workflows\ci-push.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

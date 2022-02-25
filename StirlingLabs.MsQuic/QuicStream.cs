@@ -98,7 +98,7 @@ public sealed partial class QuicStream : IDisposable
     internal unsafe QuicStream(QuicRegistration registration, QuicPeerConnection connection, QUIC_HANDLE* handle, QUIC_STREAM_OPEN_FLAGS flags,
         long id)
         : this(registration, connection, handle, flags)
-        => Registration.Table.SetParam(Handle, QUIC_PARAM_LEVEL.QUIC_PARAM_LEVEL_STREAM, QUIC_PARAM_STREAM_ID, 8, &id);
+        => Registration.Table.SetParam(Handle, QUIC_PARAM_STREAM_ID, 8, &id);
 
     public string? Name { get; set; }
 
@@ -112,7 +112,7 @@ public sealed partial class QuicStream : IDisposable
             if (rs <= 0) throw new InvalidOperationException("Stream is not initialized.");
             uint l = sizeof(long);
             long value = -1;
-            var status = Registration.Table.GetParam(Handle, QUIC_PARAM_LEVEL.QUIC_PARAM_LEVEL_STREAM, QUIC_PARAM_STREAM_ID, &l, &value);
+            var status = Registration.Table.GetParam(Handle, QUIC_PARAM_STREAM_ID, &l, &value);
             AssertSuccess(status);
             return value;
         }
@@ -123,7 +123,7 @@ public sealed partial class QuicStream : IDisposable
     {
         uint l = sizeof(long);
         fixed (long* pId = &id)
-            return IsSuccess(Registration.Table.GetParam(Handle, QUIC_PARAM_LEVEL.QUIC_PARAM_LEVEL_STREAM, QUIC_PARAM_STREAM_ID, &l, pId));
+            return IsSuccess(Registration.Table.GetParam(Handle, QUIC_PARAM_STREAM_ID, &l, pId));
     }
 
 
@@ -423,7 +423,7 @@ public sealed partial class QuicStream : IDisposable
                     // all buffers were read
                     //Registration.Table.StreamReceiveComplete(_handle, (ulong)received);
                     Registration.Table.StreamReceiveComplete(_handle, _lastRecvTotalRead);
-                    Registration.Table.StreamReceiveSetEnabled(_handle, true);
+                    Registration.Table.StreamReceiveSetEnabled(_handle, 1);
                     return received;
                 }
 
@@ -475,8 +475,7 @@ public sealed partial class QuicStream : IDisposable
         if (IsStarted) return;
 
         var status = Registration.Table.StreamStart(Handle,
-            QUIC_STREAM_START_FLAGS.QUIC_STREAM_START_FLAG_ASYNC
-            | QUIC_STREAM_START_FLAGS.QUIC_STREAM_START_FLAG_IMMEDIATE
+            QUIC_STREAM_START_FLAGS.QUIC_STREAM_START_FLAG_IMMEDIATE
             | QUIC_STREAM_START_FLAGS.QUIC_STREAM_START_FLAG_SHUTDOWN_ON_FAIL);
         AssertNotFailure(status);
         if (status == QUIC_STATUS_PENDING)

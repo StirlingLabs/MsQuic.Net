@@ -461,13 +461,13 @@ public abstract partial class QuicPeerConnection : IDisposable
             }
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_LOCAL_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
-                LocalEndPoint = sockaddr.Read(typedEvent.Address);
+                LocalEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LocalEndPoint={LocalEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
-                RemoteEndPoint = sockaddr.Read(typedEvent.Address);
+                RemoteEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{RemoteEndPoint={RemoteEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
@@ -505,7 +505,8 @@ public abstract partial class QuicPeerConnection : IDisposable
             }
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_NEEDS_STREAMS: {
                 LimitingRemoteStreams = true;
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LimitingRemoteStreams={LimitingRemoteStreams}}}");
+                Trace.TraceInformation(
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LimitingRemoteStreams={LimitingRemoteStreams}}}");
                 break;
             }
 
@@ -615,7 +616,6 @@ public abstract partial class QuicPeerConnection : IDisposable
         {
             Registration.Table.SetParam(
                 Handle,
-                QUIC_PARAM_LEVEL.QUIC_PARAM_LEVEL_CONNECTION,
                 QUIC_PARAM_CONN_RESUMPTION_TICKET,
                 (uint)_resumptionTicket.Length,
                 pTicket);

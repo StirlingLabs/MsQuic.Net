@@ -7,6 +7,11 @@
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(CI)'!=''">
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageOutputPath>../artifacts</PackageOutputPath>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\Microsoft.Quic\Microsoft.Quic.MsQuic.csproj">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
@@ -15,13 +20,42 @@
 
     <ItemGroup>
         <PackageReference Include="JetBrains.Annotations" Version="2021.3.0" PrivateAssets="all" />
-        <PackageReference Include="StirlingLabs.Utilities" Version="22.2.4" />
+        <PackageReference Include="sockaddr.Net" Version="22.2.4" />
+        <PackageReference Include="StirlingLabs.Utilities" Version="22.2.5" />
         <PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.0" />
     </ItemGroup>
-    
+
+    <Choose>
+        <When Condition="'$(RuntimeIdentifier)'==''">
+            <ItemGroup>
+                <!-- TODO: arm64 -->
+                <PackageReference Include="runtime.linux-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+                <PackageReference Include="runtime.osx-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+                <PackageReference Include="runtime.win-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+            </ItemGroup>
+        </When>
+        <When Condition="$(RuntimeIdentifier.StartsWith('linux')">
+            <ItemGroup>
+                <!-- TODO: arm64 -->
+                <PackageReference Include="runtime.linux-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+            </ItemGroup>
+        </When>
+        <When Condition="$(RuntimeIdentifier.StartsWith('win')">
+            <ItemGroup>
+                <!-- TODO: arm64 -->
+                <PackageReference Include="runtime.win-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+            </ItemGroup>
+        </When>
+        <When Condition="$(RuntimeIdentifier.StartsWith('osx')">
+            <ItemGroup>
+                <PackageReference Include="runtime.osx-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+            </ItemGroup>
+        </When>
+    </Choose>
+
     <ItemGroup>
-      <None Remove="*.DotSettings" />
+        <None Remove="*.DotSettings" />
     </ItemGroup>
 
     <ImportGroup>

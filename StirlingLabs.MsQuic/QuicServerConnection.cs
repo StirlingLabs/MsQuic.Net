@@ -12,6 +12,8 @@ using static Microsoft.Quic.MsQuic;
 
 namespace StirlingLabs.MsQuic;
 
+using sockaddr = StirlingLabs.sockaddr;
+
 [PublicAPI]
 public sealed class QuicServerConnection : QuicPeerConnection
 {
@@ -31,8 +33,8 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 Unsafe.CopyBlock(pSpan, (void*)pAlpn, alpnLength);
         });
 
-        LocalEndPoint = sockaddr.Read(info->LocalAddress);
-        RemoteEndPoint = sockaddr.Read(info->RemoteAddress);
+        LocalEndPoint = ((sockaddr*)(info->LocalAddress))->ToEndPoint();
+        RemoteEndPoint = ((sockaddr*)(info->RemoteAddress))->ToEndPoint();
 
         var pSn = (IntPtr)info->ServerName;
         var snLength = info->ServerNameLength;
@@ -112,7 +114,8 @@ public sealed class QuicServerConnection : QuicPeerConnection
 
                 OnConnected();
 
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
+                Trace.TraceInformation(
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
 
                 return QUIC_STATUS_SUCCESS;
             }
