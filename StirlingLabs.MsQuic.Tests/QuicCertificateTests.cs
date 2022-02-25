@@ -35,6 +35,9 @@ public class QuicCertificateTests
     [Platform("Win")]
     public void StartUpCertFromStoreTest()
     {
+        if (IsContinuousIntegration)
+            Assert.Ignore("Certificate store is not expected to be set up under CI.");
+
         var testName = TestContext.CurrentContext.Test.FullName;
 
         using var reg = new QuicRegistration(testName);
