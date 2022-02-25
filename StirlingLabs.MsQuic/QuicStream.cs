@@ -38,7 +38,7 @@ public sealed partial class QuicStream : IDisposable
     private unsafe QUIC_BUFFER* _lastRecvBufs;
     private uint _lastRecvBufsCount;
 
-    private Memory<byte> _unreadBuffer;
+    //private Memory<byte> _unreadBuffer;
     private bool _started;
 
     public unsafe QuicStream(QuicRegistration registration, QuicPeerConnection connection,
@@ -141,7 +141,8 @@ public sealed partial class QuicStream : IDisposable
                     return 0;
 
                 case -1:
-                    return (uint)_unreadBuffer.Length;
+                    //return (uint)_unreadBuffer.Length;
+                    throw new ObjectDisposedException(nameof(QuicStream));
             }
 
             lock (_lastRecvLock)
@@ -277,6 +278,7 @@ public sealed partial class QuicStream : IDisposable
                 // TODO: ???
                 if (typedEvent.ConnectionShutdown == 0)
                 {
+                    /*
                     if (_unreadBuffer.IsEmpty)
                     {
                         var avail = DataAvailable;
@@ -289,6 +291,7 @@ public sealed partial class QuicStream : IDisposable
                             _unreadBuffer = buffer;
                         }
                     }
+                    */
                     Interlocked.Exchange(ref _runState, -1);
                 }
                 else
@@ -371,6 +374,7 @@ public sealed partial class QuicStream : IDisposable
             case -1: {
                 // stream was finalized, can read any saved unread
 
+                /*
                 if (_unreadBuffer.IsEmpty)
                     return 0;
 
@@ -380,10 +384,15 @@ public sealed partial class QuicStream : IDisposable
                     ? _unreadBuffer.Slice(copied)
                     : Memory<byte>.Empty;
                 return copied;
+                */
+                throw new ObjectDisposedException(nameof(QuicStream));
             }
         }
 
-        lock (_lastRecvLock)
+        if (!Monitor.IsEntered(_lastRecvLock))
+            throw new InvalidOperationException("Can only invoke Receive from inside a DataReceive event.");
+
+        //lock (_lastRecvLock)
         {
             var received = 0;
             var bufferAvailable = buffer.Length;

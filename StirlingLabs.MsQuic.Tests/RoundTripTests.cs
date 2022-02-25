@@ -201,6 +201,7 @@ public class RoundTripTests
     }
 
     [Test]
+    [Ignore("Not currently supported, may be deprecated")]
     public unsafe void RoundTripSimple2StreamTest()
     {
         // stream round trip
