@@ -166,6 +166,7 @@ public class Quic0RttTests
 
 
     [Test]
+    [Timeout(10000)]
     public unsafe void RoundTrip0RttStreamTest()
     {
         // stream round trip

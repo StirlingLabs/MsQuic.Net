@@ -135,12 +135,14 @@ public class RoundTripTests
 
     [Order(0)]
     [Test]
+    [Timeout(100)]
     public void RoundTripSanityTest()
     {
         // intentionally empty
     }
 
     [Test]
+    [Timeout(10000)]
     public unsafe void RoundTripSimpleStreamTest()
     {
         // stream round trip
@@ -158,11 +160,14 @@ public class RoundTripTests
         QuicStream serverStream = null !;
 
         _serverSide.IncomingStream += (_, stream) => {
+            TestContext.Progress.WriteLine("handling _serverSide.IncomingStream");
             serverStream = stream;
             streamOpened = true;
             cde.Signal();
+            TestContext.Progress.WriteLine("handled _serverSide.IncomingStream");
         };
 
+        TestContext.Progress.WriteLine("waiting for _serverSide.IncomingStream");
         cde.Wait();
 
         Assert.True(streamOpened);
@@ -176,6 +181,7 @@ public class RoundTripTests
             var ptrDataReceived = (IntPtr)pDataReceived;
 
             serverStream.DataReceived += _ => {
+                TestContext.Progress.WriteLine("handling serverStream.DataReceived");
 
                 // ReSharper disable once VariableHidesOuterVariable
                 var dataReceived = new Span<byte>((byte*)ptrDataReceived, dataLength);
@@ -185,22 +191,26 @@ public class RoundTripTests
                 Assert.AreEqual(dataLength, read);
 
                 cde.Signal();
+                TestContext.Progress.WriteLine("handled serverStream.DataReceived");
             };
 
         }
 
         var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
 
+        TestContext.Progress.WriteLine("waiting for serverStream.DataReceived");
         cde.Wait();
 
         BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
 
+        TestContext.Progress.WriteLine("waiting for clientStream.SendAsync");
         task.Wait();
 
         Assert.True(task.IsCompletedSuccessfully);
     }
 
     [Test]
+    [Timeout(10000)]
     [Ignore("Not currently supported, may be deprecated")]
     public unsafe void RoundTripSimple2StreamTest()
     {
@@ -254,6 +264,7 @@ public class RoundTripTests
     }
 
     [Test]
+    [Timeout(10000)]
     public void RoundTripDatagramTest()
     {
         // datagram round trip
@@ -306,6 +317,7 @@ public class RoundTripTests
 
 
     [Test]
+    [Timeout(10000)]
     public void RoundTripDatagram2Test()
     {
         // datagram round trip
