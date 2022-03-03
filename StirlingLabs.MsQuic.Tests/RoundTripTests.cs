@@ -68,6 +68,8 @@ public class RoundTripTests
 
         _listener = new(listenerCfg);
 
+        TestContext.Progress.WriteLine("starting _listener");
+
         _listener.Start(new(IPAddress.IPv6Loopback, port));
 
         using var clientCfg = new QuicClientConfiguration(_reg, "test");
@@ -83,39 +85,51 @@ public class RoundTripTests
 
         _clientSide.CertificateReceived += (peer, certificate, chain, flags, status)
             => {
+            TestContext.Progress.WriteLine("handled CertificateReceived");
             // TODO: cheap cert validation tests
             return QUIC_STATUS_SUCCESS;
         };
 
         _listener.ClientConnected += (_, connection) => {
+            TestContext.Progress.WriteLine("handling _listener.ClientConnected");
             serverConnected = true;
             _serverSide = connection;
             cde.Signal();
+            TestContext.Progress.WriteLine("handled _listener.ClientConnected");
         };
 
         _clientSide.Connected += _ => {
+            TestContext.Progress.WriteLine("handling _clientSide.Connected");
             clientConnected = true;
             cde.Signal();
+            TestContext.Progress.WriteLine("handled _clientSide.Connected");
         };
 
+        TestContext.Progress.WriteLine("starting _clientSide");
+        
         _clientSide.Start("localhost", port);
 
+        TestContext.Progress.WriteLine("waiting for _listener.ClientConnected, _clientSide.Connected");
+        
         cde.Wait();
 
         Assert.True(serverConnected);
         Assert.True(clientConnected);
 
         _listener.UnobservedException += (_, info) => {
+            Assert.Warn("_listener.UnobservedException");
             info.Throw();
         };
 
         _clientSide.UnobservedException += (_, info) => {
+            Assert.Warn("_clientSide.UnobservedException");
             info.Throw();
         };
 
         Assert.NotNull(_serverSide);
 
         _serverSide.UnobservedException += (_, info) => {
+            Assert.Warn("_serverSide.UnobservedException");
             info.Throw();
         };
 
