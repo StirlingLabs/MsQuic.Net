@@ -178,10 +178,6 @@ public class RoundTripTests
 
         using var cde = new CountdownEvent(1);
 
-        using var clientStream = _clientSide.OpenStream(true);
-        
-        Debug.Assert(!clientStream.IsStarted);
-
         var streamOpened = false;
 
         //clientStream.Send(utf8Hello);
@@ -197,8 +193,8 @@ public class RoundTripTests
         };
 
         output.WriteLine("waiting for _serverSide.IncomingStream");
-        
-        Debug.Assert(!clientStream.IsStarted);
+
+        using var clientStream = _clientSide.OpenStream();
 
         cde.Wait();
 
@@ -236,60 +232,6 @@ public class RoundTripTests
         BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
 
         output.WriteLine("waiting for clientStream.SendAsync");
-        task.Wait();
-
-        Assert.True(task.IsCompletedSuccessfully);
-    }
-
-    [Test]
-    [Timeout(10000)]
-    [Ignore("Not currently supported, may be deprecated")]
-    public unsafe void RoundTripSimple2StreamTest()
-    {
-        // stream round trip
-        Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
-        var dataLength = utf8Hello.Length;
-
-        using var cde = new CountdownEvent(1);
-
-        using var clientStream = _clientSide.OpenStream();
-
-        var streamOpened = false;
-
-        //clientStream.Send(utf8Hello);
-
-        QuicStream serverStream = null !;
-
-        _serverSide.IncomingStream += (_, stream) => {
-            serverStream = stream;
-            streamOpened = true;
-            cde.Signal();
-        };
-
-        cde.Wait();
-
-        Assert.True(streamOpened);
-
-        cde.Reset();
-
-        serverStream.DataReceived += _ => {
-            cde.Signal();
-        };
-
-        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
-
-        cde.Wait();
-
-        Span<byte> dataReceived = stackalloc byte[dataLength];
-
-        var read = serverStream.Receive(dataReceived);
-
-        Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {serverStream} Completed Receive");
-
-        Assert.AreEqual(dataLength, read);
-
-        BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
-
         task.Wait();
 
         Assert.True(task.IsCompletedSuccessfully);
