@@ -178,7 +178,9 @@ public class RoundTripTests
 
         using var cde = new CountdownEvent(1);
 
-        using var clientStream = _clientSide.OpenStream();
+        using var clientStream = _clientSide.OpenStream(true);
+        
+        Debug.Assert(!clientStream.IsStarted);
 
         var streamOpened = false;
 
@@ -195,6 +197,9 @@ public class RoundTripTests
         };
 
         output.WriteLine("waiting for _serverSide.IncomingStream");
+        
+        Debug.Assert(!clientStream.IsStarted);
+
         cde.Wait();
 
         Assert.True(streamOpened);
