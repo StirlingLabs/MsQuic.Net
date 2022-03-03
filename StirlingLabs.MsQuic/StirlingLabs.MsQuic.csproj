@@ -28,12 +28,7 @@
 
     <Choose>
         <When Condition="'$(RuntimeIdentifier)'==''">
-            <ItemGroup>
-                <!-- TODO: arm64 -->
-                <PackageReference Include="runtime.linux-x64.libsa" Version="22.3.0" PrivateAssets="all" />
-                <PackageReference Include="runtime.osx-x64.libsa" Version="22.3.0" PrivateAssets="all" />
-                <PackageReference Include="runtime.win-x64.libsa" Version="22.3.0" PrivateAssets="all" />
-            </ItemGroup>
+            <!-- TODO: include .targets, .props files to select runtime for dependers in sockaddr.Net -->
         </When>
         <When Condition="$(RuntimeIdentifier.StartsWith('linux')">
             <ItemGroup>
