@@ -22,11 +22,11 @@ public class ReliableAcknowledgementTests
 
     [SetUp]
     public void SetUp()
-        => TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
+        => TestContext.Out.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
 
     [TearDown]
     public void TearDown()
-        => TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
+        => TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
 
     [Test]
     public void EncodingTest1()

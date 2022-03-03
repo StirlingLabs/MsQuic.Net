@@ -25,11 +25,11 @@ public class QuicCertificateTests
 
     [SetUp]
     public void SetUp()
-        => TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
+        => TestContext.Out.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
 
     [TearDown]
     public void TearDown()
-        => TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
+        => TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
 
     [Test]
     [Platform("Win")]
@@ -59,18 +59,20 @@ public class QuicCertificateTests
     [Test]
     public void StartUpCertFromP12Test()
     {
+        var output = TestContext.Out;
+
         var testName = TestContext.CurrentContext.Test.FullName;
 
         using var reg = new QuicRegistration(testName);
 
-        TestContext.Progress.WriteLine("Creating QuicServerConfiguration");
+        output.WriteLine("Creating QuicServerConfiguration");
 
         using var listenerCfg = new QuicServerConfiguration(reg, "test");
 
         var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath)!;
         var p12Path = Path.Combine(asmDir, "localhost.p12");
 
-        TestContext.Progress.WriteLine("Creating QuicCertificate");
+        output.WriteLine("Creating QuicCertificate");
 
         var cert = new QuicCertificate(policy => {
             policy.RevocationMode = X509RevocationMode.NoCheck;
@@ -82,22 +84,22 @@ public class QuicCertificateTests
                 | X509VerificationFlags.IgnoreEndRevocationUnknown;
         }, File.OpenRead(p12Path));
 
-        TestContext.Progress.WriteLine("QuicServerConfiguration.ConfigureCredentials");
+        output.WriteLine("QuicServerConfiguration.ConfigureCredentials");
 
         listenerCfg.ConfigureCredentials(cert);
 
-        TestContext.Progress.WriteLine("QuicCertificate.Free");
+        output.WriteLine("QuicCertificate.Free");
 
         cert.Free();
 
-        TestContext.Progress.WriteLine("Creating QuicListener");
+        output.WriteLine("Creating QuicListener");
 
         using var listener = new QuicListener(listenerCfg);
 
-        TestContext.Progress.WriteLine("QuicListener.Start");
+        output.WriteLine("QuicListener.Start");
 
         listener.Start(new(IPAddress.IPv6Loopback, _lastPort += 1));
 
-        TestContext.Progress.WriteLine("Disposal");
+        output.WriteLine("Disposal");
     }
 }

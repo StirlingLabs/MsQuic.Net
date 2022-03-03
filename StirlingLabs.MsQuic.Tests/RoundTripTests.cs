@@ -54,7 +54,9 @@ public class RoundTripTests
     [SetUp]
     public void SetUp()
     {
-        TestContext.Progress.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
+        var output = TestContext.Out;
+
+        output.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
 
         var port = _lastPort += 1;
 
@@ -68,7 +70,7 @@ public class RoundTripTests
 
         _listener = new(listenerCfg);
 
-        TestContext.Progress.WriteLine("starting _listener");
+        output.WriteLine("starting _listener");
 
         _listener.Start(new(IPAddress.IPv6Loopback, port));
 
@@ -85,31 +87,31 @@ public class RoundTripTests
 
         _clientSide.CertificateReceived += (peer, certificate, chain, flags, status)
             => {
-            TestContext.Progress.WriteLine("handled CertificateReceived");
+            output.WriteLine("handled CertificateReceived");
             // TODO: cheap cert validation tests
             return QUIC_STATUS_SUCCESS;
         };
 
         _listener.ClientConnected += (_, connection) => {
-            TestContext.Progress.WriteLine("handling _listener.ClientConnected");
+            output.WriteLine("handling _listener.ClientConnected");
             serverConnected = true;
             _serverSide = connection;
             cde.Signal();
-            TestContext.Progress.WriteLine("handled _listener.ClientConnected");
+            output.WriteLine("handled _listener.ClientConnected");
         };
 
         _clientSide.Connected += _ => {
-            TestContext.Progress.WriteLine("handling _clientSide.Connected");
+            output.WriteLine("handling _clientSide.Connected");
             clientConnected = true;
             cde.Signal();
-            TestContext.Progress.WriteLine("handled _clientSide.Connected");
+            output.WriteLine("handled _clientSide.Connected");
         };
 
-        TestContext.Progress.WriteLine("starting _clientSide");
+        output.WriteLine("starting _clientSide");
         
         _clientSide.Start("localhost", port);
 
-        TestContext.Progress.WriteLine("waiting for _listener.ClientConnected, _clientSide.Connected");
+        output.WriteLine("waiting for _listener.ClientConnected, _clientSide.Connected");
         
         cde.Wait();
 
@@ -133,7 +135,7 @@ public class RoundTripTests
             info.Throw();
         };
 
-        TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
+        output.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
     }
 
     [TearDown]
@@ -144,7 +146,7 @@ public class RoundTripTests
         _listener.Dispose();
         _reg.Dispose();
 
-        TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
+        TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
     }
 
     [Order(0)]
@@ -159,6 +161,8 @@ public class RoundTripTests
     [Timeout(10000)]
     public unsafe void RoundTripSimpleStreamTest()
     {
+        var output = TestContext.Out;
+
         // stream round trip
         Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
         var dataLength = utf8Hello.Length;
@@ -174,14 +178,14 @@ public class RoundTripTests
         QuicStream serverStream = null !;
 
         _serverSide.IncomingStream += (_, stream) => {
-            TestContext.Progress.WriteLine("handling _serverSide.IncomingStream");
+            output.WriteLine("handling _serverSide.IncomingStream");
             serverStream = stream;
             streamOpened = true;
             cde.Signal();
-            TestContext.Progress.WriteLine("handled _serverSide.IncomingStream");
+            output.WriteLine("handled _serverSide.IncomingStream");
         };
 
-        TestContext.Progress.WriteLine("waiting for _serverSide.IncomingStream");
+        output.WriteLine("waiting for _serverSide.IncomingStream");
         cde.Wait();
 
         Assert.True(streamOpened);
@@ -195,7 +199,7 @@ public class RoundTripTests
             var ptrDataReceived = (IntPtr)pDataReceived;
 
             serverStream.DataReceived += _ => {
-                TestContext.Progress.WriteLine("handling serverStream.DataReceived");
+                output.WriteLine("handling serverStream.DataReceived");
 
                 // ReSharper disable once VariableHidesOuterVariable
                 var dataReceived = new Span<byte>((byte*)ptrDataReceived, dataLength);
@@ -205,19 +209,19 @@ public class RoundTripTests
                 Assert.AreEqual(dataLength, read);
 
                 cde.Signal();
-                TestContext.Progress.WriteLine("handled serverStream.DataReceived");
+                output.WriteLine("handled serverStream.DataReceived");
             };
 
         }
 
         var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
 
-        TestContext.Progress.WriteLine("waiting for serverStream.DataReceived");
+        output.WriteLine("waiting for serverStream.DataReceived");
         cde.Wait();
 
         BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
 
-        TestContext.Progress.WriteLine("waiting for clientStream.SendAsync");
+        output.WriteLine("waiting for clientStream.SendAsync");
         task.Wait();
 
         Assert.True(task.IsCompletedSuccessfully);

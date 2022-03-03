@@ -54,7 +54,9 @@ public class ReliableDatagramTests
     [SetUp]
     public void SetUp()
     {
-        TestContext.Progress.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
+        var output = TestContext.Out;
+
+        output.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
 
         var port = _lastPort += 1;
 
@@ -120,7 +122,7 @@ public class ReliableDatagramTests
             info.Throw();
         };
         
-        TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
+        output.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
     }
 
     [TearDown]
@@ -131,13 +133,13 @@ public class ReliableDatagramTests
         _listener.Dispose();
         _reg.Dispose();
         
-        TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
+        TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
     }
 
 
     [Order(0)]
     [Test]
-    [Timeout(100)]
+    [Timeout(1000)]
     public void RoundTripSanityTest()
     {
         // intentionally empty

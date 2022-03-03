@@ -60,7 +60,9 @@ public class Quic0RttTests
     [SetUp]
     public void SetUp()
     {
-        TestContext.Progress.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
+        var output = TestContext.Out;
+
+        output.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
 
         _port = _lastPort += 1;
 
@@ -148,7 +150,7 @@ public class Quic0RttTests
             };
         }
 
-        TestContext.Progress.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
+        output.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
     }
 
     [TearDown]
@@ -161,7 +163,7 @@ public class Quic0RttTests
         _listenerCfg.Dispose();
         _reg.Dispose();
 
-        TestContext.Progress.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
+        TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
     }
 
 
