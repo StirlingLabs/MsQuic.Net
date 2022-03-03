@@ -270,9 +270,11 @@ public abstract partial class QuicPeerConnection : IDisposable
             Debug.Assert(IncomingStream is null);
             InboundAcknowledgementStream = stream;
             WireUpInboundAcknowledgementStream();
+            Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Incoming Inbound Acknowledgement Stream {stream}");
         }
         else
         {
+            Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Incoming Stream {stream}");
             Debug.Assert(IncomingStream is not null);
             IncomingStream?.Invoke(this, stream);
         }

@@ -26,12 +26,13 @@ public class RoundTripTests
 
     private static readonly bool IsContinuousIntegration = Common.Init
         (() => (Environment.GetEnvironmentVariable("CI") ?? "").ToUpperInvariant() == "TRUE");
+    private TextWriterTraceListener _tl;
 
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
         if (IsContinuousIntegration)
-            Trace.Listeners.Add(new ConsoleTraceListener());
+            Trace.Listeners.Add(new ConsoleTraceListener(true));
 
         var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath);
         var p12Path = Path.Combine(asmDir!, "localhost.p12");
@@ -55,6 +56,10 @@ public class RoundTripTests
     public void SetUp()
     {
         var output = TestContext.Out;
+
+        _tl = new(output);
+
+        Trace.Listeners.Add(_tl);
 
         output.WriteLine($"=== SETUP {TestContext.CurrentContext.Test.FullName} ===");
 
@@ -108,11 +113,11 @@ public class RoundTripTests
         };
 
         output.WriteLine("starting _clientSide");
-        
+
         _clientSide.Start("localhost", port);
 
         output.WriteLine("waiting for _listener.ClientConnected, _clientSide.Connected");
-        
+
         cde.Wait();
 
         Assert.True(serverConnected);
@@ -141,10 +146,14 @@ public class RoundTripTests
     [TearDown]
     public void TearDown()
     {
+        Trace.Listeners.Remove(_tl);
+
         _serverSide.Dispose();
         _clientSide.Dispose();
         _listener.Dispose();
         _reg.Dispose();
+
+        _tl = null!;
 
         TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
     }
