@@ -151,7 +151,7 @@ public class RoundTripTests
 
     [Order(0)]
     [Test]
-    [Timeout(100)]
+    [Timeout(1000)]
     public void RoundTripSanityTest()
     {
         // intentionally empty
