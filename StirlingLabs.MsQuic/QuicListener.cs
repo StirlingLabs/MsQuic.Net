@@ -177,11 +177,11 @@ public sealed class QuicListener : IDisposable
                 break;
             }
             case AddressFamily.InterNetwork: {
-                sa = sockaddr.CreateIPv4(endPoint.Address.ToString(), checked((ushort)endPoint.Port));
+                sa = sockaddr.CreateIPv4(endPoint.Address, checked((ushort)endPoint.Port));
                 break;
             }
             case AddressFamily.InterNetworkV6: {
-                sa = sockaddr.CreateIPv6(endPoint.Address.ToString(), checked((ushort)endPoint.Port));
+                sa = sockaddr.CreateIPv6(endPoint.Address, checked((ushort)endPoint.Port));
                 break;
             }
         }

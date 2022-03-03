@@ -33,8 +33,8 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 Unsafe.CopyBlock(pSpan, (void*)pAlpn, alpnLength);
         });
 
-        LocalEndPoint = ((sockaddr*)(info->LocalAddress))->ToEndPoint();
-        RemoteEndPoint = ((sockaddr*)(info->RemoteAddress))->ToEndPoint();
+        LocalEndPoint = ((sockaddr*)info->LocalAddress)->ToEndPoint();
+        RemoteEndPoint = ((sockaddr*)info->RemoteAddress)->ToEndPoint();
 
         var pSn = (IntPtr)info->ServerName;
         var snLength = info->ServerNameLength;

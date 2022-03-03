@@ -20,7 +20,7 @@
 
     <ItemGroup>
         <PackageReference Include="JetBrains.Annotations" Version="2021.3.0" PrivateAssets="all" />
-        <PackageReference Include="sockaddr.Net" Version="22.2.4" />
+        <PackageReference Include="sockaddr.Net" Version="22.3.0" />
         <PackageReference Include="StirlingLabs.Utilities" Version="22.2.5" />
         <PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.0" />
@@ -30,26 +30,26 @@
         <When Condition="'$(RuntimeIdentifier)'==''">
             <ItemGroup>
                 <!-- TODO: arm64 -->
-                <PackageReference Include="runtime.linux-x64.libsa" Version="22.2.4" PrivateAssets="all" />
-                <PackageReference Include="runtime.osx-x64.libsa" Version="22.2.4" PrivateAssets="all" />
-                <PackageReference Include="runtime.win-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+                <PackageReference Include="runtime.linux-x64.libsa" Version="22.3.0" PrivateAssets="all" />
+                <PackageReference Include="runtime.osx-x64.libsa" Version="22.3.0" PrivateAssets="all" />
+                <PackageReference Include="runtime.win-x64.libsa" Version="22.3.0" PrivateAssets="all" />
             </ItemGroup>
         </When>
         <When Condition="$(RuntimeIdentifier.StartsWith('linux')">
             <ItemGroup>
                 <!-- TODO: arm64 -->
-                <PackageReference Include="runtime.linux-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+                <PackageReference Include="runtime.linux-x64.libsa" Version="22.3.0" PrivateAssets="all" />
             </ItemGroup>
         </When>
         <When Condition="$(RuntimeIdentifier.StartsWith('win')">
             <ItemGroup>
                 <!-- TODO: arm64 -->
-                <PackageReference Include="runtime.win-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+                <PackageReference Include="runtime.win-x64.libsa" Version="22.3.0" PrivateAssets="all" />
             </ItemGroup>
         </When>
         <When Condition="$(RuntimeIdentifier.StartsWith('osx')">
             <ItemGroup>
-                <PackageReference Include="runtime.osx-x64.libsa" Version="22.2.4" PrivateAssets="all" />
+                <PackageReference Include="runtime.osx-x64.libsa" Version="22.3.0" PrivateAssets="all" />
             </ItemGroup>
         </When>
     </Choose>
