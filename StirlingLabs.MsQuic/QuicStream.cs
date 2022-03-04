@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -568,27 +569,45 @@ public sealed partial class QuicStream : IDisposable
             Close();
     }
 
-    [SuppressMessage("Design", "CA1003", Justification = "Done")]
-    public event Utilities.EventHandler<QuicStream>? DataReceived
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    private Utilities.EventHandler<QuicStream>? _dataReceived;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Utilities.EventHandler<QuicStream>? GetDataReceivedHandler()
+        => Interlocked.CompareExchange(ref _dataReceived, null, null);
+
+    public Utilities.EventHandler<QuicStream>? DataReceived
     {
-        add {
-            if (HasDataReceivedHandler)
-                throw GetDataReceivedHandlerOccupiedException();
-            _dataReceived += value;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => GetDataReceivedHandler();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set {
+            if (value is not null)
+            {
+                var check = GetDataReceivedHandler();
+
+                if (check is not null)
+                    throw GetDataReceivedHandlerOccupiedException();
+            }
+
+            Interlocked.Exchange(ref _dataReceived, value);
         }
-        remove => _dataReceived -= value;
     }
 
-    private event Utilities.EventHandler<QuicStream>? _dataReceived;
-
-    public bool HasDataReceivedHandler => _dataReceived is not null;
+    public bool HasDataReceivedHandler
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => DataReceived is not null;
+    }
 
     public QUIC_RECEIVE_FLAGS LastReceiveFlags => _lastRecvFlags;
 
     public bool IsStarted => _started;
 
     private void OnDataReceived()
-        => _dataReceived?.Invoke(this);
+        => DataReceived?.Invoke(this);
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
     public event EventHandler<QuicStream, ExceptionDispatchInfo>? UnobservedException;
