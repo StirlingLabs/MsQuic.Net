@@ -573,26 +573,15 @@ public sealed partial class QuicStream : IDisposable
     [EditorBrowsable(EditorBrowsableState.Never)]
     private Utilities.EventHandler<QuicStream>? _dataReceived;
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private Utilities.EventHandler<QuicStream>? GetDataReceivedHandler()
-        => Interlocked.CompareExchange(ref _dataReceived, null, null);
-
     public Utilities.EventHandler<QuicStream>? DataReceived
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => GetDataReceivedHandler();
+        get => Interlocked.CompareExchange(ref _dataReceived, null, null);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set {
-            if (value is not null)
-            {
-                var check = GetDataReceivedHandler();
-
-                if (check is not null)
-                    throw GetDataReceivedHandlerOccupiedException();
-            }
-
-            Interlocked.Exchange(ref _dataReceived, value);
+            if (Interlocked.CompareExchange(ref _dataReceived, value, null) is not null)
+                throw GetDataReceivedHandlerOccupiedException();
         }
     }
 
