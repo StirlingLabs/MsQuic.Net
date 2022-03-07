@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Microsoft.Quic;
 using StirlingLabs.Native;
@@ -8,10 +7,10 @@ using StirlingLabs.Native;
 namespace StirlingLabs.MsQuic;
 
 [PublicAPI]
-public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
+public sealed class QuicReadOnlyDatagramOwnedManagedMemory : QuicReadOnlyDatagram
 {
     public IMemoryOwner<byte> MemoryOwner { get; }
-    public Memory<byte> Memory { get; set; }
+    public ReadOnlyMemory<byte> Memory { get; set; }
 
     public MemoryHandle MemoryHandle { get; }
 
@@ -29,14 +28,11 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
     {
         base.Dispose();
 
-        if (WipeWhenFinished)
-            Memory.Span.Clear();
-
         MemoryHandle.Dispose();
         MemoryOwner.Dispose();
     }
 
-    public unsafe QuicDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> mem,
+    public unsafe QuicReadOnlyDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> mem,
         QUIC_DATAGRAM_SEND_STATE state = Unknown)
         : base(connection, state)
     {
@@ -45,7 +41,7 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
         MemoryHandle = MemoryOwner.Memory.Pin();
         NativeMemory.Free(_quicBuffer);
     }
-    public unsafe QuicDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> memOwner, Memory<byte> mem,
+    public unsafe QuicReadOnlyDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> memOwner, ReadOnlyMemory<byte> mem,
         QUIC_DATAGRAM_SEND_STATE state = Unknown)
         : base(connection, state)
     {

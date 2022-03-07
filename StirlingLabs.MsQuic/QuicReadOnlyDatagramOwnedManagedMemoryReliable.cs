@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Microsoft.Quic;
 using StirlingLabs.Native;
@@ -8,10 +7,10 @@ using StirlingLabs.Native;
 namespace StirlingLabs.MsQuic;
 
 [PublicAPI]
-public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
+public sealed class QuicReadOnlyDatagramOwnedManagedMemoryReliable : QuicReadOnlyDatagram
 {
     public IMemoryOwner<byte> MemoryOwner { get; }
-    public Memory<byte> Memory { get; set; }
+    public ReadOnlyMemory<byte> Memory { get; }
 
     public MemoryHandle MemoryHandle { get; }
 
@@ -19,9 +18,11 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
     public override unsafe QUIC_BUFFER* GetBuffer()
     {
         if (_quicBuffer == null)
-            _quicBuffer = NativeMemory.New<QUIC_BUFFER>();
-        _quicBuffer->Buffer = (byte*)MemoryHandle.Pointer;
-        _quicBuffer->Length = (uint)Memory.Length;
+            _quicBuffer = NativeMemory.New<QUIC_BUFFER>(2);
+        _quicBuffer[0].Buffer = null;
+        _quicBuffer[0].Length = 0;
+        _quicBuffer[1].Buffer = (byte*)MemoryHandle.Pointer;
+        _quicBuffer[1].Length = (uint)Memory.Length;
         return _quicBuffer;
     }
 
@@ -29,14 +30,11 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
     {
         base.Dispose();
 
-        if (WipeWhenFinished)
-            Memory.Span.Clear();
-
         MemoryHandle.Dispose();
         MemoryOwner.Dispose();
     }
 
-    public unsafe QuicDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> mem,
+    public unsafe QuicReadOnlyDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> mem,
         QUIC_DATAGRAM_SEND_STATE state = Unknown)
         : base(connection, state)
     {
@@ -45,8 +43,8 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
         MemoryHandle = MemoryOwner.Memory.Pin();
         NativeMemory.Free(_quicBuffer);
     }
-    public unsafe QuicDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> memOwner, Memory<byte> mem,
-        QUIC_DATAGRAM_SEND_STATE state = Unknown)
+    public unsafe QuicReadOnlyDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> memOwner,
+        ReadOnlyMemory<byte> mem, QUIC_DATAGRAM_SEND_STATE state = Unknown)
         : base(connection, state)
     {
         MemoryOwner = memOwner;

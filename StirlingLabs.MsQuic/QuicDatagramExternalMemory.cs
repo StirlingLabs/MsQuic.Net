@@ -18,7 +18,7 @@ public sealed class QuicDatagramExternalMemory : QuicDatagram
 
     private unsafe QUIC_BUFFER* _quicBuffer;
 
-    internal override unsafe QUIC_BUFFER* GetBuffer()
+    public override unsafe QUIC_BUFFER* GetBuffer()
     {
         if (_quicBuffer == null)
             _quicBuffer = NativeMemory.New<QUIC_BUFFER>();

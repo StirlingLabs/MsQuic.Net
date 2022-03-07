@@ -19,7 +19,7 @@ public abstract partial class QuicPeerConnection
     private object _reliableDatagramAckLock = new();
 
     private object _reliableDatagramSentUnacknowledgedLock = new();
-    private SortedList<ulong, QuicDatagramReliable> _reliableDatagramsSentUnacknowledged = new();
+    private SortedList<ulong, IQuicDatagramReliable> _reliableDatagramsSentUnacknowledged = new();
 
     protected internal ulong GenerateReliableId()
 #if NETSTANDARD
@@ -103,7 +103,7 @@ public abstract partial class QuicPeerConnection
         ParseAckDatagram(data, AcknowledgeReliableDatagramById);
     }
 
-    protected internal bool RemoveFromUnacknowledged(QuicDatagramReliable dg)
+    protected internal bool RemoveFromUnacknowledged(IQuicDatagramReliable dg)
     {
         if (dg is null) throw new ArgumentNullException(nameof(dg));
 
@@ -213,7 +213,7 @@ public abstract partial class QuicPeerConnection
         return length;
     }
 
-    public static unsafe void CleanUpReliableDatagramBuffer(QuicDatagramReliable dgr)
+    public static unsafe void CleanUpReliableDatagramBuffer(IQuicDatagramReliable dgr)
     {
         var buf = dgr.GetBuffer();
 

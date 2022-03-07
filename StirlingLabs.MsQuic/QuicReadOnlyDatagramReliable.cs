@@ -7,9 +7,9 @@ using Microsoft.Quic;
 namespace StirlingLabs.MsQuic;
 
 [PublicAPI]
-public abstract class QuicDatagramReliable : QuicDatagram, IQuicDatagramReliable
+public abstract class QuicReadOnlyDatagramReliable : QuicReadOnlyDatagram, IQuicDatagramReliable
 {
-    protected QuicDatagramReliable(QuicPeerConnection connection, QUIC_DATAGRAM_SEND_STATE state)
+    protected QuicReadOnlyDatagramReliable(QuicPeerConnection connection, QUIC_DATAGRAM_SEND_STATE state)
         : base(connection, state)
         => Id = connection.GenerateReliableId();
 

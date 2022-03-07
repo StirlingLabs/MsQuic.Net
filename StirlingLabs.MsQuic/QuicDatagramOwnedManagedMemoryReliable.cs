@@ -1,4 +1,3 @@
-
 using System;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
@@ -17,7 +16,7 @@ public sealed class QuicDatagramOwnedManagedMemoryReliable : QuicDatagram
     public MemoryHandle MemoryHandle { get; }
 
     private unsafe QUIC_BUFFER* _quicBuffer;
-    internal override unsafe QUIC_BUFFER* GetBuffer()
+    public override unsafe QUIC_BUFFER* GetBuffer()
     {
         if (_quicBuffer == null)
             _quicBuffer = NativeMemory.New<QUIC_BUFFER>(2);
@@ -39,7 +38,8 @@ public sealed class QuicDatagramOwnedManagedMemoryReliable : QuicDatagram
         MemoryOwner.Dispose();
     }
 
-    public unsafe QuicDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> mem, QUIC_DATAGRAM_SEND_STATE state = Unknown)
+    public unsafe QuicDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> mem,
+        QUIC_DATAGRAM_SEND_STATE state = Unknown)
         : base(connection, state)
     {
         MemoryOwner = mem;
@@ -47,7 +47,8 @@ public sealed class QuicDatagramOwnedManagedMemoryReliable : QuicDatagram
         MemoryHandle = MemoryOwner.Memory.Pin();
         NativeMemory.Free(_quicBuffer);
     }
-    public unsafe QuicDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> memOwner, Memory<byte> mem, QUIC_DATAGRAM_SEND_STATE state = Unknown)
+    public unsafe QuicDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> memOwner, Memory<byte> mem,
+        QUIC_DATAGRAM_SEND_STATE state = Unknown)
         : base(connection, state)
     {
         MemoryOwner = memOwner;
@@ -56,4 +57,3 @@ public sealed class QuicDatagramOwnedManagedMemoryReliable : QuicDatagram
         NativeMemory.Free(_quicBuffer);
     }
 }
-

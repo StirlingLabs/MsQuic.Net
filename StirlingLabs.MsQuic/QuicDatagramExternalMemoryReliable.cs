@@ -15,7 +15,7 @@ public sealed class QuicDatagramExternalMemoryReliable : QuicDatagramReliable
 
     private unsafe QUIC_BUFFER* _quicBuffer;
 
-    internal override unsafe QUIC_BUFFER* GetBuffer()
+    public override unsafe QUIC_BUFFER* GetBuffer()
     {
         if (_quicBuffer == null)
             _quicBuffer = NativeMemory.New<QUIC_BUFFER>(2);
@@ -33,7 +33,7 @@ public sealed class QuicDatagramExternalMemoryReliable : QuicDatagramReliable
         _externalMemFree((IntPtr)_externalMemStart);
         _externalMemStart = null;
         _externalMemLength = 0;
-        
+
         if (_quicBuffer == null) return;
 
         QuicPeerConnection.CleanUpReliableDatagramBuffer(this);
