@@ -13,7 +13,7 @@ public abstract class QuicDatagram : QuicReadOnlyDatagram, IQuicDatagram
     {
         if (connection is null)
             throw new ArgumentNullException(nameof(connection));
-        if (!CanCreate(connection, data))
+        if (!CanCreateInternal(connection, data.Length))
             throw new ArgumentOutOfRangeException(nameof(data), "Message size too large to fit into a datagram.");
 
         return connection.DatagramsAreReliable
@@ -24,7 +24,7 @@ public abstract class QuicDatagram : QuicReadOnlyDatagram, IQuicDatagram
     {
         if (connection is null)
             throw new ArgumentNullException(nameof(connection));
-        if (!CanCreate(connection, data))
+        if (!CanCreateInternal(connection, data.Length))
             throw new ArgumentOutOfRangeException(nameof(data), "Message size too large to fit into a datagram.");
 
         return connection.DatagramsAreReliable
@@ -36,7 +36,7 @@ public abstract class QuicDatagram : QuicReadOnlyDatagram, IQuicDatagram
     {
         if (connection is null)
             throw new ArgumentNullException(nameof(connection));
-        if (!CanCreate(connection, externalMemLength))
+        if (!CanCreateInternal(connection, externalMemLength))
             throw new ArgumentOutOfRangeException(nameof(externalMemLength), "Message size too large to fit into a datagram.");
 
         return connection.DatagramsAreReliable

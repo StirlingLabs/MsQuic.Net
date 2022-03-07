@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using StirlingLabs.Utilities;
 namespace StirlingLabs.MsQuic;
 
 [PublicAPI]
+[SuppressMessage("Design", "CA1063", Justification = "It's fine")]
 public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
 {
     private QUIC_SEND_FLAGS _flags;
@@ -85,15 +87,27 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
 
     public abstract unsafe QUIC_BUFFER* GetBuffer();
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanCreate(QuicPeerConnection connection, ReadOnlyMemory<byte> data)
         => CanCreate(connection, data.Length);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanCreate(QuicPeerConnection connection, long size)
+    {
+        if (connection is null)
+            throw new ArgumentNullException(nameof(connection));
+        return CanCreateInternal(connection, size);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected static bool CanCreateInternal(QuicPeerConnection connection, long size)
         => size < connection.MaxSendLength;
+
     public static QuicReadOnlyDatagram Create(QuicPeerConnection connection, ReadOnlyMemory<byte> data)
     {
         if (connection is null)
             throw new ArgumentNullException(nameof(connection));
-        if (!CanCreate(connection, data))
+        if (!CanCreateInternal(connection, data.Length))
             throw new ArgumentOutOfRangeException(nameof(data), "Message size too large to fit into a datagram.");
 
         return connection.DatagramsAreReliable
@@ -104,7 +118,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
     {
         if (connection is null)
             throw new ArgumentNullException(nameof(connection));
-        if (!CanCreate(connection, data))
+        if (!CanCreateInternal(connection, data.Length))
             throw new ArgumentOutOfRangeException(nameof(data), "Message size too large to fit into a datagram.");
 
         return connection.DatagramsAreReliable
