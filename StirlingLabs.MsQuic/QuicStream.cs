@@ -580,7 +580,11 @@ public sealed partial class QuicStream : IDisposable
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set {
-            if (Interlocked.CompareExchange(ref _dataReceived, value, null) is not null)
+            // always permit unsetting
+            if (value is null)
+                Interlocked.Exchange(ref _dataReceived, null);
+            // don't permit resetting
+            else if (Interlocked.CompareExchange(ref _dataReceived, value, null) is not null)
                 throw GetDataReceivedHandlerOccupiedException();
         }
     }
