@@ -103,6 +103,26 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
     protected static bool CanCreateInternal(QuicPeerConnection connection, long size)
         => size < connection.MaxSendLength;
 
+    public static bool TryCreate(QuicPeerConnection connection, ReadOnlyMemory<byte> data,
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        [NotNullWhen(true)]
+#endif
+        out QuicReadOnlyDatagram? dg)
+    {
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+        if (connection is null
+            || !CanCreateInternal(connection, data.Length))
+        {
+            dg = null;
+            return false;
+        }
+
+        dg = connection.DatagramsAreReliable
+            ? new QuicReadOnlyDatagramManagedMemoryReliable(connection, data)
+            : new QuicReadOnlyDatagramManagedMemory(connection, data);
+        return true;
+    }
+
     public static QuicReadOnlyDatagram Create(QuicPeerConnection connection, ReadOnlyMemory<byte> data)
     {
         if (connection is null)
@@ -113,6 +133,25 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
         return connection.DatagramsAreReliable
             ? new QuicReadOnlyDatagramManagedMemoryReliable(connection, data)
             : new QuicReadOnlyDatagramManagedMemory(connection, data);
+    }
+    public static bool TryCreate(QuicPeerConnection connection, IMemoryOwner<byte> owner, ReadOnlyMemory<byte> data,
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        [NotNullWhen(true)]
+#endif
+        out QuicReadOnlyDatagram? dg)
+    {
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+        if (connection is null
+            || !CanCreateInternal(connection, data.Length))
+        {
+            dg = null;
+            return false;
+        }
+
+        dg = connection.DatagramsAreReliable
+            ? new QuicReadOnlyDatagramOwnedManagedMemoryReliable(connection, owner, data)
+            : new QuicReadOnlyDatagramOwnedManagedMemory(connection, owner, data);
+        return true;
     }
     public static QuicReadOnlyDatagram Create(QuicPeerConnection connection, IMemoryOwner<byte> owner, ReadOnlyMemory<byte> data)
     {

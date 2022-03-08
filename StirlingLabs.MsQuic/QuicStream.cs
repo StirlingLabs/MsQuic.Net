@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -451,11 +452,14 @@ public sealed partial class QuicStream : IDisposable
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
-    public unsafe Task SendAsync(Memory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
+    public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
     {
+        if (data.IsEmpty) throw new ArgumentException("Should not be empty.", nameof(data));
+
         var h = data.Pin();
 
         var buf = NativeMemory.New<QUIC_BUFFER>();
+        if (buf == null) throw new NotImplementedException("Failed to allocate native memory.");
         buf->Buffer = (byte*)h.Pointer;
         buf->Length = (uint)data.Length;
 
@@ -468,14 +472,52 @@ public sealed partial class QuicStream : IDisposable
         return tcs.Task;
     }
 
+    public Task SendAsync(params ReadOnlyMemory<byte>[] data)
+        => SendAsync(QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE, data);
+
+    public Task SendAsync(ReadOnlyMemory<byte>[] data, QUIC_SEND_FLAGS flags)
+        => SendAsync(flags, data);
+
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
-    public unsafe Task SendAsync(QUIC_BUFFER* buf, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
+    public unsafe Task SendAsync(QUIC_SEND_FLAGS flags, params ReadOnlyMemory<byte>[] data)
     {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (data.Length == 0) throw new ArgumentException("Array must not be empty.", nameof(data));
+
+        var l = (uint)data.Length;
+        var buf = NativeMemory.New<QUIC_BUFFER>(l);
+        if (buf == null) throw new NotImplementedException("Failed to allocate native memory.");
+        var pins = new MemoryHandle[l];
+        for (var i = 0; i < l; i++)
+        {
+            var m = data[i];
+            var h = m.Pin();
+            pins[i] = h;
+
+            buf[i].Buffer = (byte*)h.Pointer;
+            buf[i].Length = (uint)m.Length;
+        }
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        var hCtx = new GcHandle<PinnedMultipleDataSendContext>(new(pins, buf, tcs));
+
+        Registration.Table.StreamSend(Handle, buf, l, flags, (void*)GCHandle.ToIntPtr(hCtx));
+
+        return tcs.Task;
+    }
+
+    [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
+    public unsafe Task SendAsync(QUIC_BUFFER* buf, uint count, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
+    {
+        if (buf == null) throw new ArgumentNullException(nameof(buf));
+        if (count == 0) throw new ArgumentOutOfRangeException(nameof(count), "Should be greater than zero.");
+
         var tcs = new TaskCompletionSource<bool>();
 
         var hCtx = new GcHandle<BufferSendContext>(new(buf, tcs));
 
-        Registration.Table.StreamSend(Handle, buf, 0, flags, (void*)GCHandle.ToIntPtr(hCtx));
+        Registration.Table.StreamSend(Handle, buf, count, flags, (void*)GCHandle.ToIntPtr(hCtx));
 
         return tcs.Task;
     }
