@@ -47,7 +47,9 @@ public abstract partial class QuicPeerConnection : IDisposable
 
     private readonly ConcurrentDictionary<QuicStream, Nothing?> _streams = new();
 
-    private readonly ConcurrentQueue<QuicStream> _unhandledStreams = new();
+    private readonly ConcurrentQueue<QuicStream> _incomingStreamsQueue = new();
+
+    public int QueuedIncomingStreams => _incomingStreamsQueue.Count;
 
     protected int RunState;
     protected Memory<byte> _resumptionTicket;
@@ -98,6 +100,7 @@ public abstract partial class QuicPeerConnection : IDisposable
     public SignedCms CertificateChain { get; protected set; } = null!;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [SuppressMessage("Design", "CA1031", Justification = "Exception is handed off")]
     protected bool AddStream(QuicStream stream, bool local = false)
     {
         if (local)
@@ -110,7 +113,15 @@ public abstract partial class QuicPeerConnection : IDisposable
         if (Interlocked.CompareExchange(ref RunState, 0, 0) != 0
             && _streams.TryAdd(stream, null))
             return true;
-        _unhandledStreams.Enqueue(stream);
+        try
+        {
+            throw new("Stream failed to be added due to invalid RunState.")
+                { Data = { [typeof(QuicStream)] = stream } };
+        }
+        catch (Exception ex)
+        {
+            OnUnobservedException(ExceptionDispatchInfo.Capture(ex));
+        }
         return false;
     }
 
@@ -261,13 +272,27 @@ public abstract partial class QuicPeerConnection : IDisposable
     }
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
-    public event EventHandler<QuicPeerConnection, QuicStream>? IncomingStream;
+    private event EventHandler<QuicPeerConnection, QuicStream>? _incomingStream;
+
+    [SuppressMessage("Design", "CA1003", Justification = "Done")]
+    public event EventHandler<QuicPeerConnection, QuicStream>? IncomingStream
+    {
+        add {
+            if (value is not null && Interlocked.CompareExchange(ref _incomingStream, value, null) is null)
+                while (_incomingStreamsQueue.TryDequeue(out var stream))
+                    value(this, stream);
+            else
+                _incomingStream += value;
+        }
+        remove => _incomingStream -= value;
+    }
 
     protected void OnIncomingStream(QuicStream stream)
     {
+        var eh = Interlocked.CompareExchange(ref _incomingStream, null, null);
         if (DatagramsAreReliable && InboundAcknowledgementStream is null)
         {
-            Debug.Assert(IncomingStream is null);
+            Debug.Assert(eh is null);
             InboundAcknowledgementStream = stream;
             WireUpInboundAcknowledgementStream();
             Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Incoming Inbound Acknowledgement Stream {stream}");
@@ -275,8 +300,10 @@ public abstract partial class QuicPeerConnection : IDisposable
         else
         {
             Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Incoming Stream {stream}");
-            Debug.Assert(IncomingStream is not null);
-            IncomingStream?.Invoke(this, stream);
+            if (eh is not null)
+                eh.Invoke(this, stream);
+            else
+                _incomingStreamsQueue.Enqueue(stream);
         }
     }
 

@@ -239,6 +239,82 @@ public class RoundTripTests
 
     [Test]
     [Timeout(10000)]
+    public unsafe void RoundTripSimpleQueuedStreamTest()
+    {
+        var output = TestContext.Out;
+
+        // stream round trip
+        Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
+        var dataLength = utf8Hello.Length;
+
+        using var cde = new CountdownEvent(1);
+
+        var streamOpened = false;
+
+        //clientStream.Send(utf8Hello);
+
+        QuicStream serverStream = null !;
+
+        output.WriteLine("calling _clientSide.OpenStream");
+
+        using var clientStream = _clientSide.OpenStream();
+
+        while (_serverSide.QueuedIncomingStreams < 1)
+            Thread.Yield();
+
+        _serverSide.IncomingStream += (_, stream) => {
+            output.WriteLine("handling _serverSide.IncomingStream");
+            serverStream = stream;
+            streamOpened = true;
+            cde.Signal();
+            output.WriteLine("handled _serverSide.IncomingStream");
+        };
+
+        output.WriteLine("waiting for _serverSide.IncomingStream");
+
+        cde.Wait();
+
+        Assert.True(streamOpened);
+
+        cde.Reset();
+
+        Span<byte> dataReceived = stackalloc byte[dataLength];
+
+        fixed (byte* pDataReceived = dataReceived)
+        {
+            var ptrDataReceived = (IntPtr)pDataReceived;
+
+            serverStream.DataReceived += _ => {
+                output.WriteLine("handling serverStream.DataReceived");
+
+                // ReSharper disable once VariableHidesOuterVariable
+                var dataReceived = new Span<byte>((byte*)ptrDataReceived, dataLength);
+
+                var read = serverStream.Receive(dataReceived);
+
+                Assert.AreEqual(dataLength, read);
+
+                cde.Signal();
+                output.WriteLine("handled serverStream.DataReceived");
+            };
+
+        }
+
+        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
+
+        output.WriteLine("waiting for serverStream.DataReceived");
+        cde.Wait();
+
+        BigSpanAssert.AreEqual<byte>(utf8Hello.Span, dataReceived);
+
+        output.WriteLine("waiting for clientStream.SendAsync");
+        task.Wait();
+
+        Assert.True(task.IsCompletedSuccessfully);
+    }
+
+    [Test]
+    [Timeout(10000)]
     public void RoundTripDatagramTest()
     {
         // datagram round trip
