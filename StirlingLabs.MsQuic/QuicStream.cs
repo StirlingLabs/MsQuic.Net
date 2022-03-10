@@ -373,22 +373,7 @@ public sealed partial class QuicStream : IDisposable
         {
             case 0: return 0;
 
-            case -1: {
-                // stream was finalized, can read any saved unread
-
-                /*
-                if (_unreadBuffer.IsEmpty)
-                    return 0;
-
-                var copied = Math.Min(_unreadBuffer.Length, buffer.Length);
-                _unreadBuffer.Span.CopyTo(buffer);
-                _unreadBuffer = copied != _unreadBuffer.Length
-                    ? _unreadBuffer.Slice(copied)
-                    : Memory<byte>.Empty;
-                return copied;
-                */
-                throw new ObjectDisposedException(nameof(QuicStream));
-            }
+            case -1: throw new ObjectDisposedException(nameof(QuicStream));
         }
 
         if (!Monitor.IsEntered(_lastRecvLock))
@@ -451,6 +436,79 @@ public sealed partial class QuicStream : IDisposable
         }
     }
 
+    [SuppressMessage("ReSharper", "CognitiveComplexity")]
+    public unsafe nuint Receive(BigSpan<byte> buffer)
+    {
+        if (buffer.IsEmpty)
+            return 0;
+
+        var rs = Interlocked.CompareExchange(ref _runState, 0, 0);
+        switch (rs)
+        {
+            case 0: return 0;
+
+            case -1: throw new ObjectDisposedException(nameof(QuicStream));
+        }
+
+        if (!Monitor.IsEntered(_lastRecvLock))
+            throw new InvalidOperationException("Can only invoke Receive from inside a DataReceive event.");
+
+        //lock (_lastRecvLock)
+        {
+            nuint received = 0;
+            var bufferAvailable = buffer.Length;
+
+            for (;;)
+            {
+                if (_lastRecvBufIndex >= _lastRecvBufsCount)
+                    return received;
+
+                var availData = _lastRecvBufs[_lastRecvBufIndex].GetReadOnlyBigSpan().Slice(_lastRecvBufOffset);
+                var availDataLength = availData.Length;
+
+                var readLength = availDataLength > bufferAvailable ? bufferAvailable : availDataLength; // Math.Min
+
+                availData.Slice(received, readLength).CopyTo(buffer);
+
+                bufferAvailable -= readLength;
+                received += readLength;
+                _lastRecvTotalRead += (uint)readLength;
+
+                if (readLength == availDataLength)
+                {
+                    _lastRecvBufOffset = 0;
+                    ++_lastRecvBufIndex;
+
+                    if (_lastRecvBufIndex != _lastRecvBufsCount)
+                    {
+                        // still more buffers to read
+
+                        // should never actually be < 0
+                        Debug.Assert(bufferAvailable >= 0);
+                        if (bufferAvailable > 0)
+                            continue;
+                        break;
+                    }
+
+                    // all buffers were read
+                    //Registration.Table.StreamReceiveComplete(_handle, (ulong)received);
+                    Registration.Table.StreamReceiveComplete(_handle, _lastRecvTotalRead);
+                    Registration.Table.StreamReceiveSetEnabled(_handle, 1);
+                    return received;
+                }
+
+                _lastRecvBufOffset += (uint)readLength;
+
+                // should never actually be < 0
+                Debug.Assert(bufferAvailable >= 0);
+                if (bufferAvailable <= 0)
+                    break;
+            }
+
+            //Registration.Table.StreamReceiveComplete(_handle, (ulong)received);
+            return received;
+        }
+    }
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
     public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
     {
