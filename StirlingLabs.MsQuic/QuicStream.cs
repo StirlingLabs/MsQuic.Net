@@ -363,6 +363,151 @@ public sealed partial class QuicStream : IDisposable
         => new("Something else is already registered to receive DataReceived events (see HasDataReceivedHandler).");
 
     [SuppressMessage("ReSharper", "CognitiveComplexity")]
+    public unsafe int Peek(Span<byte> buffer)
+    {
+        if (buffer.IsEmpty)
+            return 0;
+
+        var rs = Interlocked.CompareExchange(ref _runState, 0, 0);
+        switch (rs)
+        {
+            case 0: return 0;
+
+            case -1: throw new ObjectDisposedException(nameof(QuicStream));
+        }
+
+        if (!Monitor.IsEntered(_lastRecvLock))
+            throw new InvalidOperationException("Can only invoke Receive from inside a DataReceive event.");
+
+        //lock (_lastRecvLock)
+        {
+            var received = 0;
+            var bufferAvailable = buffer.Length;
+
+            var lastRecvBufIndex = _lastRecvBufIndex;
+            var lastRecvBufsCount = _lastRecvBufsCount;
+            var lastRecvBufOffset = _lastRecvBufOffset;
+
+            for (;;)
+            {
+                if (lastRecvBufIndex >= lastRecvBufsCount)
+                    return received;
+
+                var availData = _lastRecvBufs[lastRecvBufIndex].ReadOnlySpan.Slice((int)lastRecvBufOffset);
+                var availDataLength = availData.Length;
+
+                var readLength = Math.Min(availDataLength, bufferAvailable);
+
+                availData.Slice(received, readLength).CopyTo(buffer);
+
+                bufferAvailable -= readLength;
+                received += readLength;
+
+                if (readLength == availDataLength)
+                {
+                    lastRecvBufOffset = 0;
+                    ++lastRecvBufIndex;
+
+                    if (lastRecvBufIndex != lastRecvBufsCount)
+                    {
+                        // still more buffers to read
+
+                        // should never actually be < 0
+                        Debug.Assert(bufferAvailable >= 0);
+                        if (bufferAvailable > 0)
+                            continue;
+                        break;
+                    }
+                    return received;
+                }
+
+                lastRecvBufOffset += (uint)readLength;
+
+                // should never actually be < 0
+                Debug.Assert(bufferAvailable >= 0);
+                if (bufferAvailable <= 0)
+                    break;
+            }
+
+            //Registration.Table.StreamReceiveComplete(_handle, (ulong)received);
+            return received;
+        }
+    }
+
+    [SuppressMessage("ReSharper", "CognitiveComplexity")]
+    public unsafe nuint Peek(BigSpan<byte> buffer)
+    {
+        if (buffer.IsEmpty)
+            return 0;
+
+        var rs = Interlocked.CompareExchange(ref _runState, 0, 0);
+        switch (rs)
+        {
+            case 0: return 0;
+
+            case -1: throw new ObjectDisposedException(nameof(QuicStream));
+        }
+
+        if (!Monitor.IsEntered(_lastRecvLock))
+            throw new InvalidOperationException("Can only invoke Receive from inside a DataReceive event.");
+
+        //lock (_lastRecvLock)
+        {
+            nuint received = 0u;
+            var bufferAvailable = buffer.Length;
+
+            var lastRecvBufIndex = _lastRecvBufIndex;
+            var lastRecvBufsCount = _lastRecvBufsCount;
+            var lastRecvBufOffset = _lastRecvBufOffset;
+
+            for (;;)
+            {
+                if (lastRecvBufIndex >= lastRecvBufsCount)
+                    return received;
+
+                var availData = _lastRecvBufs[lastRecvBufIndex].GetReadOnlyBigSpan().Slice(lastRecvBufOffset);
+                var availDataLength = availData.Length;
+
+                var readLength = (nuint)Math.Min(availDataLength, bufferAvailable);
+
+                availData.Slice(received, readLength).CopyTo(buffer);
+
+                bufferAvailable -= readLength;
+                received += readLength;
+
+                if (readLength == availDataLength)
+                {
+                    lastRecvBufOffset = 0;
+                    ++lastRecvBufIndex;
+
+                    if (lastRecvBufIndex != lastRecvBufsCount)
+                    {
+                        // still more buffers to read
+
+                        // should never actually be < 0
+                        Debug.Assert(bufferAvailable >= 0);
+                        if (bufferAvailable > 0)
+                            continue;
+                        break;
+                    }
+                    return received;
+                }
+
+                lastRecvBufOffset += (uint)readLength;
+
+                // should never actually be < 0
+                Debug.Assert(bufferAvailable >= 0);
+                if (bufferAvailable <= 0)
+                    break;
+            }
+
+            //Registration.Table.StreamReceiveComplete(_handle, (ulong)received);
+            return received;
+        }
+    }
+
+    
+    [SuppressMessage("ReSharper", "CognitiveComplexity")]
     public unsafe int Receive(Span<byte> buffer)
     {
         if (buffer.IsEmpty)
@@ -509,6 +654,7 @@ public sealed partial class QuicStream : IDisposable
             return received;
         }
     }
+    
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
     public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
     {
