@@ -472,7 +472,7 @@ public abstract partial class QuicPeerConnection : IDisposable
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_DATAGRAM_SEND_STATE_CHANGED: {
                 ref var typedEvent = ref @event.DATAGRAM_SEND_STATE_CHANGED;
 
-                var dg = (QuicDatagram?)GCHandle.FromIntPtr((IntPtr)typedEvent.ClientContext).Target!;
+                var dg = (IQuicReadOnlyDatagram?)GCHandle.FromIntPtr((IntPtr)typedEvent.ClientContext).Target!;
 
                 dg.State = typedEvent.State;
 

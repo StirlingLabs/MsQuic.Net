@@ -152,7 +152,7 @@ public class ReliableDatagramTests
         // datagram round trip
         Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
 
-        using var datagram = (QuicDatagramReliable)QuicDatagram.Create(_clientSide, utf8Hello);
+        using var datagram = (IQuicDatagramReliable)QuicDatagram.Create(_clientSide, utf8Hello);
 
         using var cde = new CountdownEvent(4);
         var dgSent = false;
