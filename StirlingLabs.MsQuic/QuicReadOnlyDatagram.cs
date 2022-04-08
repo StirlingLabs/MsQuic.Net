@@ -174,7 +174,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
         if (State != Unknown)
             return false;
 
-        Connection.SendDatagram((QuicDatagram)this);
+        Connection.SendDatagram(this);
         return true;
     }
     public bool RetrySend()
@@ -191,7 +191,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
                 return false;
             case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_SUSPECT:
             case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED:
-                Connection.SendDatagram((QuicDatagram)this);
+                Connection.SendDatagram(this);
                 return true;
         }
     }

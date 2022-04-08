@@ -203,7 +203,7 @@ public abstract partial class QuicPeerConnection : IDisposable
         }
     }
 
-    public unsafe QuicDatagram SendDatagram(QuicDatagram dg)
+    public unsafe TDatagram SendDatagram<TDatagram>(TDatagram dg) where TDatagram : class, IQuicReadOnlyDatagram
     {
         if (dg is null) throw new ArgumentNullException(nameof(dg));
 
@@ -253,6 +253,7 @@ public abstract partial class QuicPeerConnection : IDisposable
             return dg;
         }
     }
+
     public QuicStream OpenStream(bool notStarted = false)
     {
         var stream = new QuicStream(Registration, this);
