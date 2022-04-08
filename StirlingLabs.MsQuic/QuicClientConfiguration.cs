@@ -2,7 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Microsoft.Quic;
-using Microsoft.VisualBasic;
 using StirlingLabs.Utilities;
 using static Microsoft.Quic.MsQuic;
 

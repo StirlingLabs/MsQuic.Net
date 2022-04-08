@@ -14,7 +14,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using JetBrains.Annotations;
 using Microsoft.Quic;
-using StirlingLabs.Native;
 using StirlingLabs.Utilities;
 using static Microsoft.Quic.MsQuic;
 using NativeMemory = StirlingLabs.Native.NativeMemory;
@@ -514,15 +513,24 @@ public abstract partial class QuicPeerConnection : IDisposable
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_CONNECTED:
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
+            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT: {
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
+                ref var typedEvent = ref @event.SHUTDOWN_INITIATED_BY_TRANSPORT;
+                OnShutdown(ref typedEvent);
                 break;
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
+            }
+            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER: {
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
+                ref var typedEvent = ref @event.SHUTDOWN_INITIATED_BY_PEER;
+                OnShutdown(ref typedEvent);
                 break;
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
+            }
+            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
+                ref var typedEvent = ref @event.SHUTDOWN_COMPLETE;
+                OnShutdownComplete(ref typedEvent);
                 break;
+            }
 
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_STREAMS_AVAILABLE: {
                 ref var typedEvent = ref @event.STREAMS_AVAILABLE;
@@ -664,4 +672,78 @@ public abstract partial class QuicPeerConnection : IDisposable
 
     protected QuicStream? InboundAcknowledgementStream { get; set; }
     protected QuicStream? OutboundAcknowledgementStream { get; set; }
+
+
+    [SuppressMessage("Design", "CA1003", Justification = "Done")]
+    public event EventHandler<QuicPeerConnection, bool, bool> ConnectionShutdown;
+
+    private unsafe void OnShutdown(
+        ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_TRANSPORT_e__Struct typedEvent)
+    {
+        static void Dispatcher(
+            (
+                QuicPeerConnection connection,
+                ulong errorCode,
+                EventHandler<QuicPeerConnection, ulong, bool, bool>[] handlers
+                ) o)
+        {
+            foreach (var eh in o.handlers)
+                eh.Invoke(o.connection, o.errorCode, true, false);
+        }
+
+        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+            (
+                this,
+                unchecked((ulong)typedEvent.Status),
+                (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
+            )
+        );
+    }
+
+    private unsafe void OnShutdown(
+        ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_PEER_e__Struct typedEvent)
+    {
+        static void Dispatcher(
+            (
+                QuicPeerConnection connection,
+                ulong errorCode,
+                EventHandler<QuicPeerConnection, ulong, bool, bool>[] handlers
+                ) o)
+        {
+            foreach (var eh in o.handlers)
+                eh.Invoke(o.connection, o.errorCode, false, true);
+        }
+
+        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+            (
+                this,
+                typedEvent.ErrorCode,
+                (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
+            )
+        );
+    }
+
+
+    [SuppressMessage("Design", "CA1003", Justification = "Done")]
+    // connection, appCloseInProgress, handshakeCompleted, peerAcknowledgedShutdown
+    public event EventHandler<QuicPeerConnection, bool, bool, bool> ConnectionShutdownComplete;
+
+    private unsafe void OnShutdownComplete(
+        ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_COMPLETE_e__Struct typedEvent)
+    {
+        static void Dispatcher(
+            (QuicPeerConnection connection, EventHandler<QuicPeerConnection, bool, bool, bool>[] handlers,
+                bool appCloseInProgress, bool handshakeCompleted, bool peerAcknowledged) o)
+        {
+            foreach (var eh in o.handlers)
+                eh.Invoke(o.connection, o.appCloseInProgress, o.handshakeCompleted, o.peerAcknowledged);
+        }
+
+        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+            (this, (EventHandler<QuicPeerConnection, bool, bool, bool>[])
+                ConnectionShutdownComplete.GetInvocationList(),
+                typedEvent.AppCloseInProgress != 0,
+                typedEvent.HandshakeCompleted != 0,
+                typedEvent.PeerAcknowledgedShutdown != 0));
+    }
 }

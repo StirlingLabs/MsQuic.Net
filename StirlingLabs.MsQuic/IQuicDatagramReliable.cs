@@ -1,9 +1,4 @@
 using System;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using Microsoft.Quic;
-using StirlingLabs.Utilities;
 
 namespace StirlingLabs.MsQuic;
 

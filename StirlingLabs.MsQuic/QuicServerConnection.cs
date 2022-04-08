@@ -1,7 +1,5 @@
 using System;
-using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -11,8 +9,6 @@ using StirlingLabs.Utilities;
 using static Microsoft.Quic.MsQuic;
 
 namespace StirlingLabs.MsQuic;
-
-using sockaddr = StirlingLabs.sockaddr;
 
 [PublicAPI]
 public sealed class QuicServerConnection : QuicPeerConnection

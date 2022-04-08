@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -11,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Quic;
-using StirlingLabs.Native;
 using StirlingLabs.Utilities;
 using static Microsoft.Quic.MsQuic;
 using NativeMemory = StirlingLabs.Native.NativeMemory;
@@ -266,7 +266,7 @@ public sealed partial class QuicStream : IDisposable
                 {
                     // TODO: ???
                 }
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {(graceful?"Gracefully":"Ungracefully")}");
                 return 0;
             }
 
@@ -278,30 +278,21 @@ public sealed partial class QuicStream : IDisposable
             case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE: {
                 ref var typedEvent = ref @event.SHUTDOWN_COMPLETE;
                 // TODO: ???
-                if (typedEvent.ConnectionShutdown == 0)
-                {
-                    /*
-                    if (_unreadBuffer.IsEmpty)
-                    {
-                        var avail = DataAvailable;
-                        if (avail > 0)
-                        {
-                            Debug.Assert(_unreadBuffer.IsEmpty);
-                            var buffer = new Memory<byte>(new byte[avail]);
-                            // save the unread memory
-                            Receive(buffer.Span);
-                            _unreadBuffer = buffer;
-                        }
-                    }
-                    */
-                    Interlocked.Exchange(ref _runState, -1);
-                }
-                else
+                var connectionShutdown = typedEvent.ConnectionShutdown != 0;
+                if (connectionShutdown)
                     Interlocked.Exchange(ref _runState, -2);
+                else
+                    Interlocked.Exchange(ref _runState, -1);
+
+                var appCloseInProgress = typedEvent.AppCloseInProgress != 0;
+
                 Trace.TraceInformation(
                     $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{ConnectionShutdown={typedEvent.ConnectionShutdown}}}");
+
+                OnShutdownComplete(connectionShutdown, appCloseInProgress);
                 return 0;
             }
+            
             case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN: {
                 Interlocked.Exchange(ref _runState, -1);
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
@@ -313,6 +304,27 @@ public sealed partial class QuicStream : IDisposable
             }
         }
 
+    }
+
+    [SuppressMessage("Design", "CA1003", Justification = "Done")]
+    // stream, connectionShutdown, appCloseInProgress
+    public event EventHandler<QuicPeerConnection, bool, bool> ShutdownComplete;
+
+    private unsafe void OnShutdownComplete(bool connectionShutdown, bool appCloseInProgress)
+    {
+        static void Dispatcher(
+            (QuicStream stream, EventHandler<QuicStream, bool, bool>[] handlers,
+                bool connectionShutdown, bool appCloseInProgress) o)
+        {
+            foreach (var eh in o.handlers)
+                eh.Invoke(o.stream, o.connectionShutdown, o.appCloseInProgress);
+        }
+
+        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+            (this, (EventHandler<QuicStream, bool, bool>[])
+                ShutdownComplete.GetInvocationList(),
+                connectionShutdown,
+                appCloseInProgress));
     }
 
     public Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellation)
@@ -506,7 +518,7 @@ public sealed partial class QuicStream : IDisposable
         }
     }
 
-    
+
     [SuppressMessage("ReSharper", "CognitiveComplexity")]
     public unsafe int Receive(Span<byte> buffer)
     {
@@ -654,7 +666,7 @@ public sealed partial class QuicStream : IDisposable
             return received;
         }
     }
-    
+
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
     public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
     {
@@ -854,7 +866,7 @@ public sealed partial class QuicStream : IDisposable
     private void OnUnobservedException(ExceptionDispatchInfo arg)
     {
         Debug.Assert(arg != null);
-        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg!.SourceException}");
         UnobservedException?.Invoke(this, arg);
     }
 
