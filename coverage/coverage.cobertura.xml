@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.3107" branch-rate="0.2522" version="1.9" timestamp="1649440242" lines-covered="142" lines-valid="457" branches-covered="114" branches-valid="452">
+<coverage line-rate="0.3107" branch-rate="0.2522" version="1.9" timestamp="1649447450" lines-covered="142" lines-valid="457" branches-covered="114" branches-valid="452">
   <sources />
   <packages>
     <package name="Microsoft.Quic.MsQuic.PlatformSpecific" line-rate="1" branch-rate="0.5" complexity="2">
@@ -764,12 +764,12 @@
             </method>
             <method name="get_IDEAL_PROCESSOR_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="95" hits="12" branch="False" />
+                <line number="95" hits="13" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_STATE_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="104" hits="53" branch="False" />
+                <line number="104" hits="55" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -789,7 +789,7 @@
             </method>
             <method name="get_RESUMPTION_TICKET_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="140" hits="9" branch="False" />
+                <line number="140" hits="8" branch="False" />
               </lines>
             </method>
             <method name="get_PEER_CERTIFICATE_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -807,12 +807,12 @@
             <line number="68" hits="0" branch="False" />
             <line number="77" hits="9" branch="False" />
             <line number="86" hits="11" branch="False" />
-            <line number="95" hits="12" branch="False" />
-            <line number="104" hits="53" branch="False" />
+            <line number="95" hits="13" branch="False" />
+            <line number="104" hits="55" branch="False" />
             <line number="113" hits="4" branch="False" />
             <line number="122" hits="8" branch="False" />
             <line number="131" hits="1" branch="False" />
-            <line number="140" hits="9" branch="False" />
+            <line number="140" hits="8" branch="False" />
             <line number="149" hits="9" branch="False" />
           </lines>
         </class>
