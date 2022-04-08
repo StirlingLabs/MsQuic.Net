@@ -675,7 +675,7 @@ public abstract partial class QuicPeerConnection : IDisposable
 
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
-    public event EventHandler<QuicPeerConnection, bool, bool> ConnectionShutdown;
+    public event EventHandler<QuicPeerConnection, bool, bool>? ConnectionShutdown;
 
     private unsafe void OnShutdown(
         ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_TRANSPORT_e__Struct typedEvent)
@@ -691,13 +691,14 @@ public abstract partial class QuicPeerConnection : IDisposable
                 eh.Invoke(o.connection, o.errorCode, true, false);
         }
 
-        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-            (
-                this,
-                unchecked((ulong)typedEvent.Status),
-                (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
-            )
-        );
+        if (ConnectionShutdown is not null)
+            ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+                (
+                    this,
+                    unchecked((ulong)typedEvent.Status),
+                    (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
+                )
+            );
     }
 
     private unsafe void OnShutdown(
@@ -714,19 +715,20 @@ public abstract partial class QuicPeerConnection : IDisposable
                 eh.Invoke(o.connection, o.errorCode, false, true);
         }
 
-        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-            (
-                this,
-                typedEvent.ErrorCode,
-                (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
-            )
-        );
+        if (ConnectionShutdown is not null)
+            ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+                (
+                    this,
+                    typedEvent.ErrorCode,
+                    (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
+                )
+            );
     }
 
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
     // connection, appCloseInProgress, handshakeCompleted, peerAcknowledgedShutdown
-    public event EventHandler<QuicPeerConnection, bool, bool, bool> ConnectionShutdownComplete;
+    public event EventHandler<QuicPeerConnection, bool, bool, bool>? ConnectionShutdownComplete;
 
     private unsafe void OnShutdownComplete(
         ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_COMPLETE_e__Struct typedEvent)
@@ -739,11 +741,12 @@ public abstract partial class QuicPeerConnection : IDisposable
                 eh.Invoke(o.connection, o.appCloseInProgress, o.handshakeCompleted, o.peerAcknowledged);
         }
 
-        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-            (this, (EventHandler<QuicPeerConnection, bool, bool, bool>[])
-                ConnectionShutdownComplete.GetInvocationList(),
-                typedEvent.AppCloseInProgress != 0,
-                typedEvent.HandshakeCompleted != 0,
-                typedEvent.PeerAcknowledgedShutdown != 0));
+        if (ConnectionShutdownComplete is not null)
+            ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+                (this, (EventHandler<QuicPeerConnection, bool, bool, bool>[])
+                    ConnectionShutdownComplete.GetInvocationList(),
+                    typedEvent.AppCloseInProgress != 0,
+                    typedEvent.HandshakeCompleted != 0,
+                    typedEvent.PeerAcknowledgedShutdown != 0));
     }
 }

@@ -266,7 +266,7 @@ public sealed partial class QuicStream : IDisposable
                 {
                     // TODO: ???
                 }
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {(graceful?"Gracefully":"Ungracefully")}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {(graceful ? "Gracefully" : "Ungracefully")}");
                 return 0;
             }
 
@@ -292,7 +292,7 @@ public sealed partial class QuicStream : IDisposable
                 OnShutdownComplete(connectionShutdown, appCloseInProgress);
                 return 0;
             }
-            
+
             case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN: {
                 Interlocked.Exchange(ref _runState, -1);
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
@@ -308,7 +308,7 @@ public sealed partial class QuicStream : IDisposable
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
     // stream, connectionShutdown, appCloseInProgress
-    public event EventHandler<QuicPeerConnection, bool, bool> ShutdownComplete;
+    public event EventHandler<QuicPeerConnection, bool, bool>? ShutdownComplete;
 
     private unsafe void OnShutdownComplete(bool connectionShutdown, bool appCloseInProgress)
     {
@@ -320,11 +320,12 @@ public sealed partial class QuicStream : IDisposable
                 eh.Invoke(o.stream, o.connectionShutdown, o.appCloseInProgress);
         }
 
-        ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-            (this, (EventHandler<QuicStream, bool, bool>[])
-                ShutdownComplete.GetInvocationList(),
-                connectionShutdown,
-                appCloseInProgress));
+        if (ShutdownComplete is not null)
+            ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
+                (this, (EventHandler<QuicStream, bool, bool>[])
+                    ShutdownComplete.GetInvocationList(),
+                    connectionShutdown,
+                    appCloseInProgress));
     }
 
     public Task<int> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellation)
