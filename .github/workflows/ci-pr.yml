@@ -123,6 +123,7 @@ jobs:
         env:
             DOTNET_NOLOGO: true
             DOTNET_CLI_TELEMETRY_OPTOUT: true
+            NUGET_CERT_REVOCATION_MODE: offline
         steps:
             -   uses: actions/checkout@v2
                 with:

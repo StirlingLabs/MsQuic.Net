@@ -90,7 +90,7 @@ public class RoundTripTests
         var clientConnected = false;
         var serverConnected = false;
 
-        _clientSide.CertificateReceived += (peer, certificate, chain, flags, status)
+        _clientSide.CertificateReceived += (_, _, _, _, _)
             => {
             output.WriteLine("handled CertificateReceived");
             // TODO: cheap cert validation tests
