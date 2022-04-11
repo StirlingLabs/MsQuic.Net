@@ -667,7 +667,7 @@ public abstract partial class QuicPeerConnection : IDisposable
     protected internal virtual void OnUnobservedException(ExceptionDispatchInfo arg)
     {
         Debug.Assert(arg != null);
-        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg!.SourceException}");
         UnobservedException?.Invoke(this, arg);
     }
 

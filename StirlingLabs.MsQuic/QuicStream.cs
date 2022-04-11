@@ -92,7 +92,7 @@ public sealed partial class QuicStream : IDisposable
 #endif
 
         _started = true;
-        Interlocked.Exchange(ref _runState, 0);
+        Interlocked.Exchange(ref _runState, 2);
 
         registration.Table.SetCallbackHandler(handle, nativeCallback, (void*)(IntPtr)_gcHandle);
     }

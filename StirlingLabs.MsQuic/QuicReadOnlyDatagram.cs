@@ -217,7 +217,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
     protected internal void OnUnobservedException(ExceptionDispatchInfo arg)
     {
         Debug.Assert(arg != null);
-        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg!.SourceException}");
         UnobservedException?.Invoke(this, arg);
     }
 }

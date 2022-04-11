@@ -13,7 +13,7 @@ public static class MsQuicStatus
                 ? new("Microsoft.Quic.MsQuic.Windows")
                 : new("Microsoft.Quic.MsQuic.Posix");
         var asm = Assembly.Load(asmName);
-        var type = asm.GetType("Microsoft.Quic.MsQuicStatusImpl");
-        return (MsQuicStatusBase)Activator.CreateInstance(type);
+        var type = asm.GetType("Microsoft.Quic.MsQuicStatusImpl")!;
+        return (MsQuicStatusBase)Activator.CreateInstance(type)!;
     }
 }
