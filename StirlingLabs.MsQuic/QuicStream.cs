@@ -91,16 +91,11 @@ public sealed partial class QuicStream : IDisposable
         var nativeCallback = NativeCallbackThunkPointer;
 #endif
 
-        Interlocked.Exchange(ref _runState, -1);
+        _started = true;
+        Interlocked.Exchange(ref _runState, 0);
 
         registration.Table.SetCallbackHandler(handle, nativeCallback, (void*)(IntPtr)_gcHandle);
-        _started = true;
     }
-
-    internal unsafe QuicStream(QuicRegistration registration, QuicPeerConnection connection, QUIC_HANDLE* handle, QUIC_STREAM_OPEN_FLAGS flags,
-        long id)
-        : this(registration, connection, handle, flags)
-        => Registration.Table.SetParam(Handle, QUIC_PARAM_STREAM_ID, 8, &id);
 
     public string? Name { get; set; }
 
