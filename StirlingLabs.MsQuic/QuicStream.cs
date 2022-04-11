@@ -666,6 +666,7 @@ public sealed partial class QuicStream : IDisposable
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
     public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
     {
+        CheckDisposed();
         if (data.IsEmpty) throw new ArgumentException("Should not be empty.", nameof(data));
 
         var h = data.Pin();
@@ -679,6 +680,7 @@ public sealed partial class QuicStream : IDisposable
 
         var hCtx = new GcHandle<PinnedDataSendContext>(new(h, buf, tcs));
 
+        CheckDisposed();
         Registration.Table.StreamSend(Handle, buf, 1, flags, (void*)GCHandle.ToIntPtr(hCtx));
 
         return tcs.Task;
@@ -693,6 +695,7 @@ public sealed partial class QuicStream : IDisposable
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
     public unsafe Task SendAsync(QUIC_SEND_FLAGS flags, params ReadOnlyMemory<byte>[] data)
     {
+        CheckDisposed();
         if (data is null) throw new ArgumentNullException(nameof(data));
         if (data.Length == 0) throw new ArgumentException("Array must not be empty.", nameof(data));
 
@@ -714,6 +717,7 @@ public sealed partial class QuicStream : IDisposable
 
         var hCtx = new GcHandle<PinnedMultipleDataSendContext>(new(pins, buf, tcs));
 
+        CheckDisposed();
         Registration.Table.StreamSend(Handle, buf, l, flags, (void*)GCHandle.ToIntPtr(hCtx));
 
         return tcs.Task;
@@ -722,6 +726,7 @@ public sealed partial class QuicStream : IDisposable
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
     public unsafe Task SendAsync(QUIC_BUFFER* buf, uint count, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
     {
+        CheckDisposed();
         if (buf == null) throw new ArgumentNullException(nameof(buf));
         if (count == 0) throw new ArgumentOutOfRangeException(nameof(count), "Should be greater than zero.");
 
@@ -729,6 +734,7 @@ public sealed partial class QuicStream : IDisposable
 
         var hCtx = new GcHandle<BufferSendContext>(new(buf, tcs));
 
+        CheckDisposed();
         Registration.Table.StreamSend(Handle, buf, count, flags, (void*)GCHandle.ToIntPtr(hCtx));
 
         return tcs.Task;
@@ -785,6 +791,8 @@ public sealed partial class QuicStream : IDisposable
 
     public unsafe void Shutdown()
     {
+        if (Registration.Disposed) return;
+
         // TODO: validate _runState?
         Registration.Table.StreamShutdown(Handle,
             QUIC_STREAM_SHUTDOWN_FLAGS.QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE
@@ -817,10 +825,32 @@ public sealed partial class QuicStream : IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.CompareExchange(ref _runState, 0, 0) == 0)
-            Reject();
-        else
-            Close();
+        var rs = Interlocked.CompareExchange(ref _runState, 0, 0);
+        switch (rs)
+        {
+            case < 0:
+                return;
+
+            case 0:
+                Reject();
+                break;
+
+            default:
+                Close();
+                break;
+        }
+    }
+
+    public bool Disposed
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Interlocked.CompareExchange(ref _runState, 0, 0) < 0
+            || Registration.Disposed;
+    }
+
+    private void CheckDisposed()
+    {
+        if (Disposed) throw new ObjectDisposedException(nameof(QuicStream));
     }
 
     [Browsable(false)]

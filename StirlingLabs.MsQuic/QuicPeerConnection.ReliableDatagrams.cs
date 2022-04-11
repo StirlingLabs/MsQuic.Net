@@ -115,6 +115,10 @@ public abstract partial class QuicPeerConnection
     {
         Debug.Assert(Monitor.IsEntered(_reliableDatagramAckLock));
 
+        Debug.Assert(OutboundAcknowledgementStream is not null);
+
+        if (OutboundAcknowledgementStream.Disposed) return false;
+
         if (toAck.Count <= 0) return false;
 
         var limit = _maxSendLength;
@@ -135,7 +139,7 @@ public abstract partial class QuicPeerConnection
         var headerSizeEncoded = VarIntSqlite4.Encode((ulong)length, span);
         Debug.Assert(headerSize == headerSizeEncoded);
 
-        Debug.Assert(OutboundAcknowledgementStream is not null);
+        if (OutboundAcknowledgementStream.Disposed) return false;
 
         OutboundAcknowledgementStream!.SendAsync(mem,
             OutboundAcknowledgementStream.IsStarted

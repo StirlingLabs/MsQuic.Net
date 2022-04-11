@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using JetBrains.Annotations;
 using Microsoft.Quic;
 using StirlingLabs.Utilities;
@@ -14,7 +15,7 @@ public sealed unsafe class QuicRegistration : IDisposable
         => Init();
 
     private readonly QUIC_API_TABLE* _table;
-    private QUIC_HANDLE* _handle;
+    private nint _handle;
 
 
     public QuicRegistration(string name) : this(SizedUtf8String.Create(name)) { }
@@ -39,23 +40,26 @@ public sealed unsafe class QuicRegistration : IDisposable
     public bool Disposed
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _handle == null;
+        get => Interlocked.CompareExchange(ref _handle, (nint)0, (nint)0) is (nint)0;
     }
 
     public ref QUIC_API_TABLE Table
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get {
-            if (Disposed)
-                throw new ObjectDisposedException(nameof(QuicRegistration));
+            if (Disposed) throw new ObjectDisposedException(nameof(QuicRegistration));
             return ref *_table;
         }
     }
 
     public QUIC_HANDLE* Handle
     {
-        get => Disposed ? throw new ObjectDisposedException(nameof(QuicRegistration)) : _handle;
-        private set => _handle = value;
+        get {
+            var v = Interlocked.CompareExchange(ref _handle, (nint)0, (nint)0);
+            if (v is (nint)0) throw new ObjectDisposedException(nameof(QuicRegistration));
+            return (QUIC_HANDLE*)v;
+        }
+        private set => Interlocked.Exchange(ref _handle, (nint)value);
     }
 
     public void Shutdown(ulong code)
@@ -66,11 +70,11 @@ public sealed unsafe class QuicRegistration : IDisposable
         if (Disposed)
             return;
 
-        _table->RegistrationClose(_handle);
+        _table->RegistrationClose(Handle);
 
         Close(_table);
 
-        _handle = null;
+        Handle = null;
 
     }
 }
