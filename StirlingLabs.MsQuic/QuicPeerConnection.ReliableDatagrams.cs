@@ -115,9 +115,8 @@ public abstract partial class QuicPeerConnection
     {
         Debug.Assert(Monitor.IsEntered(_reliableDatagramAckLock));
 
-        Debug.Assert(OutboundAcknowledgementStream is not null);
-
-        if (OutboundAcknowledgementStream.Disposed) return false;
+        if (OutboundAcknowledgementStream is null
+            || OutboundAcknowledgementStream.Disposed) return false;
 
         if (toAck.Count <= 0) return false;
 
