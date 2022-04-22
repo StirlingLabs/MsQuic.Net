@@ -50,6 +50,10 @@ public abstract partial class QuicPeerConnection : IDisposable
 
     public int QueuedIncomingStreams => _incomingStreamsQueue.Count;
 
+    private readonly ConcurrentQueue<byte[]> _incomingDatagramsQueue = new();
+
+    public int QueuedIncomingDatagrams => _incomingDatagramsQueue.Count;
+
     protected int RunState;
     protected Memory<byte> _resumptionTicket;
     protected Memory<byte> _resumptionState;
@@ -68,13 +72,15 @@ public abstract partial class QuicPeerConnection : IDisposable
     public ushort IdealProcessor { get; protected set; }
     public bool DatagramsAllowed { get; protected set; }
 
-    public ushort MaxSendLength
+    public unsafe ushort MaxSendLength
     {
         get {
             var maxSendLength = Interlocked.CompareExchange(ref _maxSendLength, 0, 0);
-            return checked((ushort)(DatagramsAreReliable
+            maxSendLength = checked((ushort)(DatagramsAreReliable
                 ? maxSendLength - VarIntSqlite4.GetEncodedLength(_reliableIdCounter + 120)
                 : maxSendLength));
+
+            return (ushort)maxSendLength;
         }
 
         protected set => Interlocked.Exchange(ref _maxSendLength, value);
@@ -308,7 +314,39 @@ public abstract partial class QuicPeerConnection : IDisposable
     }
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
-    public event ReadOnlySpanEventHandler<QuicPeerConnection, byte>? DatagramReceived;
+    private event ReadOnlySpanEventHandler<QuicPeerConnection, byte>? _datagramReceived;
+
+
+    [SuppressMessage("Design", "CA1003", Justification = "Done")]
+    [SuppressMessage("Design", "CA1031", Justification = "Exception is handed off")]
+    public event ReadOnlySpanEventHandler<QuicPeerConnection, byte>? DatagramReceived
+    {
+        add {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            if (Interlocked.CompareExchange(ref _datagramReceived, value, null) is null)
+                while (_incomingDatagramsQueue.TryDequeue(out var data))
+                {
+                    try
+                    {
+                        value(this, data);
+                    }
+                    catch (Exception ex)
+                    {
+                        OnUnobservedException(ExceptionDispatchInfo.Capture(ex));
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(data);
+                    }
+                }
+            else
+                _datagramReceived += value;
+        }
+        remove {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            _datagramReceived -= value;
+        }
+    }
 
     private ConcurrentDictionary<ulong, Timestamp> _seenIds = new();
     private ConcurrentDictionary<ulong, Timestamp> _ackdIds = new();
@@ -318,27 +356,72 @@ public abstract partial class QuicPeerConnection : IDisposable
     {
         try
         {
-            Debug.Assert(data.Length > 0);
-            if (!DatagramsAreReliable)
-                DatagramReceived?.Invoke(this, data);
-            else
+            if (_datagramReceived is null)
             {
-                var header = VarIntSqlite4.GetDecodedLength(data[0]);
-                var id = VarIntSqlite4.Decode(data);
-                if (!_ackdIds.TryGetValue(id, out var prevSeen))
-                    _seenIds.AddOrUpdate(id, _ => Timestamp.Now,
-                        (_, prevSeenVal) => {
-                            prevSeen = prevSeenVal;
-                            return Timestamp.Now;
-                        });
+                // queue datagrams by copy
 
-                if (prevSeen == default)
+                Debug.Assert(data.Length > 0);
+                if (!DatagramsAreReliable)
                 {
-                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id}");
-                    DatagramReceived?.Invoke(this, data.Slice(header));
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Datagram [Queued]");
+                    var copy = ArrayPool<byte>.Shared.Rent(data.Length);
+                    data.CopyTo(copy);
+                    _incomingDatagramsQueue.Enqueue(copy);
                 }
                 else
-                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id} [Retransmit {prevSeen}]");
+                {
+                    var header = VarIntSqlite4.GetDecodedLength(data[0]);
+                    var id = VarIntSqlite4.Decode(data);
+                    if (!_ackdIds.TryGetValue(id, out var prevSeen))
+                        _seenIds.AddOrUpdate(id, _ => Timestamp.Now,
+                            (_, prevSeenVal) => {
+                                prevSeen = prevSeenVal;
+                                return Timestamp.Now;
+                            });
+                    var slice = data.Slice(header);
+                    var copy = ArrayPool<byte>.Shared.Rent(slice.Length);
+                    slice.CopyTo(copy);
+
+                    if (prevSeen != default)
+                    {
+                        Trace.TraceInformation(
+                            $"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id} [Retransmit {prevSeen}]");
+                        return;
+                    }
+
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id} [Queued]");
+                    _incomingDatagramsQueue.Enqueue(copy);
+                }
+            }
+            else
+            {
+                Debug.Assert(data.Length > 0);
+                if (!DatagramsAreReliable)
+                {
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Datagram");
+                    _datagramReceived.Invoke(this, data);
+                }
+                else
+                {
+                    var header = VarIntSqlite4.GetDecodedLength(data[0]);
+                    var id = VarIntSqlite4.Decode(data);
+                    if (!_ackdIds.TryGetValue(id, out var prevSeen))
+                        _seenIds.AddOrUpdate(id, _ => Timestamp.Now,
+                            (_, prevSeenVal) => {
+                                prevSeen = prevSeenVal;
+                                return Timestamp.Now;
+                            });
+
+                    if (prevSeen != default)
+                    {
+                        Trace.TraceInformation(
+                            $"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id} [Retransmit {prevSeen}]");
+                        return;
+                    }
+
+                    Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} Received Reliable Datagram #{id}");
+                    _datagramReceived.Invoke(this, data.Slice(header));
+                }
             }
         }
         catch (Exception ex)
@@ -347,9 +430,10 @@ public abstract partial class QuicPeerConnection : IDisposable
         }
         finally
         {
-            ReliableDatagramAcknowledgementInterval ??= new(
-                ReliableDatagramAcknowledgementIntervalTime.TotalSeconds,
-                GenerateReliableDatagramAcknowledgments);
+            if (DatagramsAreReliable)
+                ReliableDatagramAcknowledgementInterval ??= new(
+                    ReliableDatagramAcknowledgementIntervalTime.TotalSeconds,
+                    GenerateReliableDatagramAcknowledgments);
         }
     }
     private bool GenerateReliableDatagramAcknowledgments()
@@ -375,9 +459,15 @@ public abstract partial class QuicPeerConnection : IDisposable
     [SuppressMessage("Design", "CA1031", Justification = "Exception is handed off")]
     protected void OnDatagramReceivedAsync(byte[] data)
     {
-        if (DatagramReceived is not null)
+        if (_datagramReceived is null)
         {
-            var delegates = DatagramReceived.GetInvocationList();
+            _incomingDatagramsQueue.Enqueue(data);
+            return;
+        }
+
+        try
+        {
+            var delegates = _datagramReceived.GetInvocationList();
             foreach (var dg in delegates)
             {
                 ThreadPool.QueueUserWorkItem(state => {
@@ -417,7 +507,10 @@ public abstract partial class QuicPeerConnection : IDisposable
                 }, (this, dg, data));
             }
         }
-        ArrayPool<byte>.Shared.Return(data);
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(data);
+        }
     }
 
     [SuppressMessage("Design", "CA1045", Justification = "Native struct")]
@@ -426,7 +519,6 @@ public abstract partial class QuicPeerConnection : IDisposable
     {
         switch (@event.Type)
         {
-
             case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED: {
                 ref var typedEvent = ref @event.PEER_STREAM_STARTED;
                 var stream = new QuicStream(Registration, this, typedEvent.Stream, typedEvent.Flags);

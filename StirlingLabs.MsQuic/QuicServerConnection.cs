@@ -113,6 +113,15 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 Trace.TraceInformation(
                     $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{NegotiatedAlpn={NegotiatedAlpn},IsResumed={IsResumed}}}");
 
+                var enabled = false;
+                {
+                    uint l = sizeof(bool);
+                    Registration.Table.GetParam(_handle, QUIC_PARAM_CONN_DATAGRAM_SEND_ENABLED, &l, &enabled);
+                }
+                DatagramsAllowed = enabled;
+                MaxSendLength = 1248;
+                
+                
                 return QUIC_STATUS_SUCCESS;
             }
 
