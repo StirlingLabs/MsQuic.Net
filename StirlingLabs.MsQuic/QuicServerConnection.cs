@@ -205,5 +205,5 @@ public sealed class QuicServerConnection : QuicPeerConnection
         => QUIC_STATUS_BAD_CERTIFICATE;
 
     public override unsafe string ToString()
-        => Name is null ? $"[QuicServerConnection 0x{(ulong)_handle:X}]" : $"[QuicServerConnection \"{Name}\" 0x{(ulong)_handle:X}]";
+        => Name is null ? $"[QuicServerConnection 0x{(ulong)Handle:X}]" : $"[QuicServerConnection \"{Name}\" 0x{(ulong)Handle:X}]";
 }

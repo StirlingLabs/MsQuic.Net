@@ -33,14 +33,14 @@ public abstract partial class QuicPeerConnection : IDisposable
     static QuicPeerConnection()
         => LogTimeStamp.Init();
 
-    protected nint _handle;
+    private nint _handle;
 
     private int _maxSendLength;
 
     public unsafe QUIC_HANDLE* Handle
     {
-        get => (QUIC_HANDLE*)_handle;
-        protected set => _handle = (nint)value;
+        get => (QUIC_HANDLE*)Interlocked.CompareExchange(ref _handle, default, default);
+        protected set => Interlocked.Exchange(ref _handle, (nint)value);
     }
 
     protected GCHandle GcHandle;
@@ -56,7 +56,11 @@ public abstract partial class QuicPeerConnection : IDisposable
     public int QueuedIncomingDatagrams => _incomingDatagramsQueue.Count;
 
     protected int RunState;
+
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     protected Memory<byte> _resumptionTicket;
+
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     protected Memory<byte> _resumptionState;
 
     protected QuicPeerConnection(QuicRegistration registration, bool reliableDatagrams)
@@ -158,14 +162,10 @@ public abstract partial class QuicPeerConnection : IDisposable
     public unsafe void Close()
     {
         if (Registration.Disposed) return;
-        const nint zero = default;
-        var handle = Interlocked.Exchange(ref _handle, zero);
-        if (handle is zero) return;
-        ThreadPoolHelpers.QueueUserWorkItemFast(&CloseInternal, (Registration, handle));
+        var handle = (QUIC_HANDLE*)Interlocked.Exchange(ref _handle, default);
+        if (handle == default(QUIC_HANDLE*)) return;
+        Registration.Table.ConnectionClose(handle);
     }
-
-    private static unsafe void CloseInternal((QuicRegistration Registration, nint Handle) state)
-        => state.Registration.Table.ConnectionClose((QUIC_HANDLE*)state.Handle);
 
 
     public QuicDatagram SendDatagram(Memory<byte> data)

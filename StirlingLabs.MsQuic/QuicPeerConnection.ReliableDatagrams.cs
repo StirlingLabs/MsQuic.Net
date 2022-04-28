@@ -90,6 +90,7 @@ public abstract partial class QuicPeerConnection
         if (!_reliableDatagramsSentUnacknowledged.TryGetValue(i, out var dg))
             return;
 
+        // ReSharper disable once RedundantAssignment
         var removed = _reliableDatagramsSentUnacknowledged.Remove(i);
         Debug.Assert(removed);
 
@@ -111,7 +112,7 @@ public abstract partial class QuicPeerConnection
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed only after finished sending")]
-    private unsafe bool TrySendDatagramAcks(SortedSet<ulong> toAck)
+    private bool TrySendDatagramAcks(SortedSet<ulong> toAck)
     {
         Debug.Assert(Monitor.IsEntered(_reliableDatagramAckLock));
 
@@ -135,6 +136,7 @@ public abstract partial class QuicPeerConnection
 
         span = mem.Span;
 
+        // ReSharper disable once RedundantAssignment
         var headerSizeEncoded = VarIntSqlite4.Encode((ulong)length, span);
         Debug.Assert(headerSize == headerSizeEncoded);
 
@@ -232,13 +234,13 @@ public abstract partial class QuicPeerConnection
         pFirstBuf->Length = 0;
     }
 
-    private IMemoryOwner<byte> _reliableAckPacketBufferOwner;
+    private IMemoryOwner<byte>? _reliableAckPacketBufferOwner;
     private Memory<byte> _reliableAckPacketBuffer;
 
     private void WireUpInboundAcknowledgementStream()
     {
         Debug.Assert(InboundAcknowledgementStream is not null);
-        InboundAcknowledgementStream.Name = "Inbound Reliable Acknowledgement Stream";
+        InboundAcknowledgementStream!.Name = "Inbound Reliable Acknowledgement Stream";
         InboundAcknowledgementStream!.DataReceived += HandleInboundAcknowledgements;
     }
     private void HandleInboundAcknowledgements(QuicStream s)
@@ -280,7 +282,7 @@ public abstract partial class QuicPeerConnection
                     _reliableAckPacketBuffer = buffer.Slice(0, newSize);
                     var prevOwner = _reliableAckPacketBufferOwner;
                     _reliableAckPacketBufferOwner = owner;
-                    prevOwner.Dispose();
+                    prevOwner?.Dispose();
                     savedNewDataAlready = true;
                     var data = buffer.Span;
 
@@ -332,7 +334,7 @@ public abstract partial class QuicPeerConnection
                     _reliableAckPacketBuffer = buffer.Slice(0, newSize);
                     var prevOwner = _reliableAckPacketBufferOwner;
                     _reliableAckPacketBufferOwner = owner;
-                    prevOwner.Dispose();
+                    prevOwner?.Dispose();
                 }
                 // save data for next packet
             }

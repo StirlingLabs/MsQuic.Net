@@ -137,7 +137,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
     private void OnConnected()
         => Connected?.Invoke(this);
 
-    public override unsafe void Dispose()
+    public override void Dispose()
         => Close();
 
     public unsafe void Start(SizedUtf8String name, ushort port)
@@ -185,5 +185,5 @@ public sealed class QuicClientConnection : QuicPeerConnection
         => QUIC_STATUS_SUCCESS;
 
     public override unsafe string ToString()
-        => Name is null ? $"[QuicClientConnection 0x{(ulong)_handle:X}]" : $"[QuicClientConnection \"{Name}\" 0x{(ulong)_handle:X}]";
+        => Name is null ? $"[QuicClientConnection 0x{(ulong)Handle:X}]" : $"[QuicClientConnection \"{Name}\" 0x{(ulong)Handle:X}]";
 }
