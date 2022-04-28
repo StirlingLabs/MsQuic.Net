@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Quic;
 using StirlingLabs.Utilities;
@@ -32,14 +33,14 @@ public abstract partial class QuicPeerConnection : IDisposable
     static QuicPeerConnection()
         => LogTimeStamp.Init();
 
-    protected unsafe QUIC_HANDLE* _handle;
+    protected nint _handle;
 
     private int _maxSendLength;
 
     public unsafe QUIC_HANDLE* Handle
     {
-        get => _handle;
-        protected set => _handle = value;
+        get => (QUIC_HANDLE*)_handle;
+        protected set => _handle = (nint)value;
     }
 
     protected GCHandle GcHandle;
@@ -157,9 +158,14 @@ public abstract partial class QuicPeerConnection : IDisposable
     public unsafe void Close()
     {
         if (Registration.Disposed) return;
-        Registration.Table.ConnectionClose(Handle);
-        Handle = null;
+        const nint zero = default;
+        var handle = Interlocked.Exchange(ref _handle, zero);
+        if (handle is zero) return;
+        ThreadPoolHelpers.QueueUserWorkItemFast(&CloseInternal, (Registration, handle));
     }
+
+    private static unsafe void CloseInternal((QuicRegistration Registration, nint Handle) state)
+        => state.Registration.Table.ConnectionClose((QUIC_HANDLE*)state.Handle);
 
 
     public QuicDatagram SendDatagram(Memory<byte> data)

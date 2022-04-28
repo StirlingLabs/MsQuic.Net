@@ -8,7 +8,17 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.Quic;
+using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Pkix;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Security.Certificates;
+using Org.BouncyCastle.Tls;
+using Org.BouncyCastle.Tls.Crypto;
+using Org.BouncyCastle.Tls.Crypto.Impl.BC;
 using StirlingLabs.Utilities;
+using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace StirlingLabs.MsQuic;
 
@@ -21,26 +31,66 @@ public struct QuicCertificate
     private GCHandle _pin;
     private bool _ownedMemory;
 
-#if NET5_0_OR_GREATER
-    private static void ValidatePkcs12(ReadOnlySpan<byte> bytes, string? password, Action<X509ChainPolicy>? config)
+    private static unsafe void ValidatePkcs12(ReadOnlySpan<byte> bytes, string? password, Action<X509ChainPolicy>? config)
     {
-        using var cert = password is null
-            ? new X509Certificate2(bytes)
-            : new(bytes, password);
+#if NETSTANDARD2_0
+        Pkcs12Store p12;
+        fixed (byte* pBytes = bytes)
+        {
+            using var ums = new UnmanagedMemoryStream(pBytes, bytes.Length);
+            p12 = password is null
+                ? new Pkcs12Store()
+                : new(ums, password?.ToCharArray());
+        }
+        var certs = new List<X509Certificate2>();
+        foreach (var alias in p12.Aliases.Cast<string>())
+            certs.Add(new(p12.GetCertificate(alias).Certificate.GetEncoded()));
+        certs.Sort((a, b) => {
+            int Score(X509Certificate2 cert)
+            {
+                var score = 0;
+                score += cert.HasPrivateKey ? 1000 : 0;
+                score += cert.Extensions.Cast<X509Extension>()
+                    .Sum(ext => {
+                        var s = 0;
+                        if (ext is X509BasicConstraintsExtension { CertificateAuthority: true })
+                            s -= 1;
+                        if (ext is X509KeyUsageExtension u && (u.KeyUsages & X509KeyUsageFlags.KeyCertSign) != 0)
+                            s -= 1;
+                        if (ext.Critical)
+                            s *= 2;
+                        return s;
+                    });
+                return score;
+            }
 
+            return Score(a).CompareTo(Score(b));
+        });
+        
+        if(certs.Count(cert => cert.HasPrivateKey) > 1)
+            throw new CryptographicException("Multiple certificates have private keys.");
+        var cert = certs[0];
 #else
-    private static void ValidatePkcs12(byte[] bytes, string? password, Action<X509ChainPolicy>? config)
-    {
-        using var cert = password is null
-            ? new X509Certificate2(bytes)
+        var p12 = password is null
+            ? new Pkcs12(bytes)
             : new(bytes, password);
 
+        var certs = p12.GetCertificatesSys().ToList();
+        var cert = certs[0];
+        cert = p12.WithPrivateKey(cert);
 #endif
 
         if (!cert.HasPrivateKey)
             throw new CryptographicException("Missing private key.");
 
+        var constraints = cert.Extensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
+        if (constraints is not null && (constraints.KeyUsages & X509KeyUsageFlags.KeyEncipherment) == 0)
+            throw new CryptographicException("Certificate with private key must be allowed to encipher keys for key exchanges.");
+
         using var chain = new X509Chain();
+
+        foreach (var pathCert in certs.Skip(1))
+            chain.ChainPolicy.ExtraStore.Add(pathCert);
 
         config?.Invoke(chain.ChainPolicy);
 

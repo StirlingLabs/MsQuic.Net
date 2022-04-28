@@ -121,7 +121,7 @@ public class ReliableDatagramTests
         _serverSide.UnobservedException += (_, info) => {
             info.Throw();
         };
-        
+
         output.WriteLine($"=== BEGIN {TestContext.CurrentContext.Test.FullName} ===");
     }
 
@@ -132,7 +132,7 @@ public class ReliableDatagramTests
         _clientSide.Dispose();
         _listener.Dispose();
         _reg.Dispose();
-        
+
         TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
     }
 
@@ -196,12 +196,14 @@ public class ReliableDatagramTests
 
         _clientSide.SendDatagram(datagram);
 
-        cde.Wait();
-
-        Assert.True(dgSent);
-        Assert.True(dgAcknowledged);
-        Assert.True(dgReceived);
-        Assert.True(dgReliablyAcknowledged);
+        var success = cde.Wait(8000);
+        Assert.Multiple(() => {
+            Assert.True(dgSent, "Datagram must be sent");
+            Assert.True(dgAcknowledged, "Datagram must be acknowledged");
+            Assert.True(dgReceived, "Datagram must be received");
+            Assert.True(dgReliablyAcknowledged, "Datagram must be reliably acknowledged");
+        });
+        Assert.True(success, "Wait must complete before timeout.");
     }
 
 

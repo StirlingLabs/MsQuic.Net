@@ -18,7 +18,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
     public unsafe QuicServerConnection(QuicServerConfiguration config, QUIC_HANDLE* handle, QUIC_NEW_CONNECTION_INFO* info)
         : base((config ?? throw new ArgumentNullException(nameof(config))).Registration, config.DatagramsAreReliable)
     {
-        _handle = handle;
+        Handle = handle;
         _config = config;
 
         var pAlpn = (IntPtr)info->NegotiatedAlpn;
@@ -99,12 +99,12 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 if (!ResumptionTicket.IsEmpty)
                     fixed (byte* pTicket = ResumptionTicket.Span)
                     {
-                        Registration.Table.ConnectionSendResumptionTicket(_handle,
+                        Registration.Table.ConnectionSendResumptionTicket(Handle,
                             QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
                             (ushort)ResumptionTicket.Length, pTicket);
                     }
                 else
-                    Registration.Table.ConnectionSendResumptionTicket(_handle,
+                    Registration.Table.ConnectionSendResumptionTicket(Handle,
                         QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
                         0, null);
 
@@ -116,7 +116,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 var enabled = false;
                 {
                     uint l = sizeof(bool);
-                    Registration.Table.GetParam(_handle, QUIC_PARAM_CONN_DATAGRAM_SEND_ENABLED, &l, &enabled);
+                    Registration.Table.GetParam(Handle, QUIC_PARAM_CONN_DATAGRAM_SEND_ENABLED, &l, &enabled);
                 }
                 DatagramsAllowed = enabled;
                 MaxSendLength = 1248;

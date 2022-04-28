@@ -43,7 +43,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
             throw;
         }
 
-        _handle = handle;
+        Handle = handle;
 
         if (!DatagramsAreReliable) return;
 
@@ -93,12 +93,12 @@ public sealed class QuicClientConnection : QuicPeerConnection
                 if (!ResumptionTicket.IsEmpty)
                     fixed (byte* pTicket = ResumptionTicket.Span)
                     {
-                        Registration.Table.ConnectionSendResumptionTicket(_handle,
+                        Registration.Table.ConnectionSendResumptionTicket(Handle,
                             QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
                             (ushort)ResumptionTicket.Length, pTicket);
                     }
                 else
-                    Registration.Table.ConnectionSendResumptionTicket(_handle,
+                    Registration.Table.ConnectionSendResumptionTicket(Handle,
                         QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
                         0, null);
 

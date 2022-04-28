@@ -1,9 +1,14 @@
 using System;
 using System.Diagnostics;
+using System.Formats.Asn1;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
+using FluentAssertions;
 using NUnit.Framework;
+using Org.BouncyCastle.Asn1.X509;
 using StirlingLabs.Utilities;
 
 namespace StirlingLabs.MsQuic.Tests;
@@ -31,8 +36,44 @@ public class QuicCertificateTests
     public void TearDown()
         => TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
 
+
+    [Test]
+    [Repeat(10)]
+    public void Pkcs12CertTest1()
+    {
+
+        var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath)!;
+        var p12Path = Path.Combine(asmDir, "localhost.p12");
+
+        var sw = Stopwatch.StartNew();
+        var p12 = new Pkcs12(p12Path);
+        var elapsed = sw.ElapsedTicks;
+        TestContext.WriteLine($"Pkcs12 ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms) ");
+
+        sw.Restart();
+        var firstCertSys = p12.GetCertificatesSys().First();
+        elapsed = sw.ElapsedTicks;
+        TestContext.WriteLine($"p12.GetCertificatesSys().First() ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
+
+        sw.Restart();
+        var firstCert = p12.GetCertificatesFast().First();
+        elapsed = sw.ElapsedTicks;
+        TestContext.WriteLine($"p12.GetCertificatesFast().First() ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
+
+        sw.Restart();
+        var sysP12 = new X509Certificate2(p12Path);
+        elapsed = sw.ElapsedTicks;
+        TestContext.WriteLine($"X509Certificate2 ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
+
+        firstCert.SubjectDN.Equivalent(new(sysP12.Subject))
+            .Should().BeTrue();
+
+        firstCertSys.Subject.Should().Be(sysP12.Subject);
+    }
+
     [Test]
     [Platform("Win")]
+    [Explicit]
     public void StartUpCertFromStoreTest()
     {
         if (IsContinuousIntegration)
@@ -57,6 +98,7 @@ public class QuicCertificateTests
     }
 
     [Test]
+    [Repeat(10)]
     public void StartUpCertFromP12Test()
     {
         var output = TestContext.Out;
@@ -73,7 +115,7 @@ public class QuicCertificateTests
         var p12Path = Path.Combine(asmDir, "localhost.p12");
 
         output.WriteLine("Creating QuicCertificate");
-
+        var sw = Stopwatch.StartNew();
         var cert = new QuicCertificate(policy => {
             policy.RevocationMode = X509RevocationMode.NoCheck;
             policy.DisableCertificateDownloads = false;
@@ -83,6 +125,8 @@ public class QuicCertificateTests
                 | X509VerificationFlags.IgnoreRootRevocationUnknown
                 | X509VerificationFlags.IgnoreEndRevocationUnknown;
         }, File.OpenRead(p12Path));
+        var elapsed = sw.ElapsedTicks;
+        TestContext.WriteLine($"QuicCertificate ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
 
         output.WriteLine("QuicServerConfiguration.ConfigureCredentials");
 
