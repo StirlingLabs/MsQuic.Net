@@ -10,7 +10,7 @@ public static class MsQuicStatus
     {
         AssemblyName asmName
             = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? new("StirlingLabs.MsQuic.Bindings.MsQuic.Windows")
+                ? new("StirlingLabs.MsQuic.Bindings.Windows")
                 : new("StirlingLabs.MsQuic.Bindings.Posix");
         var asm = Assembly.Load(asmName);
         var type = asm.GetType("StirlingLabs.MsQuic.Bindings.MsQuicStatusImpl")!;
