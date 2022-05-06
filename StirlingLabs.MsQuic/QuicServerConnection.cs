@@ -4,9 +4,9 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using JetBrains.Annotations;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 using StirlingLabs.Utilities;
-using static Microsoft.Quic.MsQuic;
+using static StirlingLabs.MsQuic.Bindings.MsQuic;
 
 namespace StirlingLabs.MsQuic;
 

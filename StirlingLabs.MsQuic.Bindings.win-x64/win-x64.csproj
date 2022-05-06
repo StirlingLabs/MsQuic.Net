@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.3.0">
+
+    <PropertyGroup>
+        <PackageId>StirlingLabs.MsQuic.Bindings.runtime.win-x64</PackageId>
+        <AssemblyName>StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl</AssemblyName>
+        <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+        <RootNamespace>StirlingLabs.MsQuic.Bindings</RootNamespace>
+        <LangVersion>10</LangVersion>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+        <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+        <EnableDefaultItems>false</EnableDefaultItems>
+        <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(CI)'!=''">
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageOutputPath>../artifacts</PackageOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="msquic-openssl.dll">
+            <Pack>True</Pack>
+            <PackageCopyToOutput>True</PackageCopyToOutput>
+            <PackagePath>runtimes/win-x64/native/msquic-openssl.dll</PackagePath>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>%(Identity)</Link>
+        </Content>
+    </ItemGroup>
+
+    <ImportGroup>
+        <Import Project="../MsQuicVersion.proj" />
+    </ImportGroup>
+
+
+</Project>

@@ -1,7 +1,7 @@
 using System;
 using System.Buffers;
 using JetBrains.Annotations;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 using StirlingLabs.Native;
 
 namespace StirlingLabs.MsQuic;

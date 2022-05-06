@@ -14,9 +14,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 using StirlingLabs.Utilities;
-using static Microsoft.Quic.MsQuic;
+using static StirlingLabs.MsQuic.Bindings.MsQuic;
 using NativeMemory = StirlingLabs.Native.NativeMemory;
 
 namespace StirlingLabs.MsQuic;

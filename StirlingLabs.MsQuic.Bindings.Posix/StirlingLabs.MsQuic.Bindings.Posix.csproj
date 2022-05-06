@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>StirlingLabs.MsQuic.Bindings.Posix</PackageId>
+        <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+        <RootNamespace>StirlingLabs.MsQuic.Bindings</RootNamespace>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(CI)'!=''">
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageOutputPath>../artifacts</PackageOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" PrivateAssets="All" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\StirlingLabs.MsQuic.Bindings.PlatformSpecific\StirlingLabs.MsQuic.Bindings.PlatformSpecific.csproj" />
+    </ItemGroup>
+
+    <ImportGroup>
+        <Import Project="../MsQuicVersion.proj" />
+    </ImportGroup>
+
+</Project>

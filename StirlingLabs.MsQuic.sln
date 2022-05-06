@@ -1,12 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Quic.MsQuic", "Microsoft.Quic\Microsoft.Quic.MsQuic.csproj", "{A5578279-8147-4706-8870-E783D998B91B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Bindings", "StirlingLabs.MsQuic.Bindings\StirlingLabs.MsQuic.Bindings.csproj", "{A5578279-8147-4706-8870-E783D998B91B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "linux-x64", "Microsoft.Quic.linux-x64\linux-x64.csproj", "{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "linux-x64", "StirlingLabs.MsQuic.Bindings.linux-x64\linux-x64.csproj", "{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "osx-x64", "Microsoft.Quic.osx-x64\osx-x64.csproj", "{756BA69B-C5C7-411C-8984-42810047A7AC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "osx-x64", "StirlingLabs.MsQuic.Bindings.osx-x64\osx-x64.csproj", "{756BA69B-C5C7-411C-8984-42810047A7AC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "win-x64", "Microsoft.Quic.win-x64\win-x64.csproj", "{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "win-x64", "StirlingLabs.MsQuic.Bindings.win-x64\win-x64.csproj", "{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "runtimes", "runtimes", "{8CAFA5C7-97FF-4907-AEF9-D85108D9A8C6}"
 EndProject
@@ -14,11 +14,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic", "Stir
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Tests", "StirlingLabs.MsQuic.Tests\StirlingLabs.MsQuic.Tests.csproj", "{70A486DC-8DCE-4219-BAE7-704CF9B51BA3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Quic.MsQuic.Posix", "Microsoft.Quic.MsQuic.Posix\Microsoft.Quic.MsQuic.Posix.csproj", "{D8E2FE4F-C513-435D-B644-A6F67F5576FC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Bindings.Posix", "StirlingLabs.MsQuic.Bindings.Posix\StirlingLabs.MsQuic.Bindings.Posix.csproj", "{D8E2FE4F-C513-435D-B644-A6F67F5576FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Quic.MsQuic.Windows", "Microsoft.Quic.MsQuic.Windows\Microsoft.Quic.MsQuic.Windows.csproj", "{38E2B0AF-7964-44C6-ACAC-BB1FF6D6B5AC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Bindings.Windows", "StirlingLabs.MsQuic.Bindings.Windows\StirlingLabs.MsQuic.Bindings.Windows.csproj", "{38E2B0AF-7964-44C6-ACAC-BB1FF6D6B5AC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Quic.MsQuic.PlatformSpecific", "Microsoft.Quic.MsQuic.PlatformSpecific\Microsoft.Quic.MsQuic.PlatformSpecific.csproj", "{28303EE3-E0C9-436B-AAF2-C64E02CEB705}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Bindings.PlatformSpecific", "StirlingLabs.MsQuic.Bindings.PlatformSpecific\StirlingLabs.MsQuic.Bindings.PlatformSpecific.csproj", "{28303EE3-E0C9-436B-AAF2-C64E02CEB705}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github", "github", "{68B5C4A1-7B53-429E-91CB-04865236A88E}"
 	ProjectSection(SolutionItems) = preProject

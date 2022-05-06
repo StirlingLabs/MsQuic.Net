@@ -2,7 +2,7 @@ using System;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 
 namespace StirlingLabs.MsQuic;
 

@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.ExceptionServices;
 using JetBrains.Annotations;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 
 namespace StirlingLabs.MsQuic;
 

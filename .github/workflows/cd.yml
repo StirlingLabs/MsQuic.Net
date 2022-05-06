@@ -48,7 +48,7 @@ jobs:
                     path: |
                         artifacts/*.nupkg
                     if-no-files-found: error
-            -   name: Push NuGet Packages
+            -   name: Push NuGet Packages (GitHub)
                 run: dotnet nuget push artifacts/*.nupkg -k ${{github.token}} -s https://nuget.pkg.github.com/${{github.repository_owner}}/index.json -n 1 --skip-duplicate || true
             -   name: Save coverage to storage branch
                 uses: StirlingLabs/BranchStorageAction@v21.07.3
@@ -133,3 +133,5 @@ jobs:
                     name: StirlingLabs.MsQuic
                     files: |
                         artifacts/**
+            -   name: Push NuGet Packages (NuGet.org)
+                run: dotnet nuget push artifacts/*.nupkg -k ${{secrets.NUGET_STIRLINGLABS_API_KEY}} -s https://api.nuget.org/v3/index.json -n 1 --skip-duplicate || true

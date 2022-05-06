@@ -9,9 +9,9 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using JetBrains.Annotations;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 using StirlingLabs.Utilities;
-using static Microsoft.Quic.MsQuic;
+using static StirlingLabs.MsQuic.Bindings.MsQuic;
 
 namespace StirlingLabs.MsQuic;
 
@@ -194,7 +194,7 @@ public sealed class QuicListener : IDisposable
             fixed (QUIC_BUFFER* pQuicAlpns = quicAlpns)
             {
                 AssertSuccess(
-                    Registration.Table.ListenerStart(Handle, pQuicAlpns, 1, (Microsoft.Quic.sockaddr*)sa));
+                    Registration.Table.ListenerStart(Handle, pQuicAlpns, 1, (StirlingLabs.MsQuic.Bindings.sockaddr*)sa));
             }
 
             Interlocked.Exchange(ref _runState, 2);

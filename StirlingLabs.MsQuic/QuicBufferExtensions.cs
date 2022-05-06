@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 using StirlingLabs.Utilities;
 
 namespace StirlingLabs.MsQuic;

@@ -5,11 +5,11 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
-using Microsoft.Quic;
+using StirlingLabs.MsQuic.Bindings;
 using NUnit.Framework;
 using StirlingLabs.Utilities;
 using StirlingLabs.Utilities.Assertions;
-using static Microsoft.Quic.MsQuic;
+using static StirlingLabs.MsQuic.Bindings.MsQuic;
 
 namespace StirlingLabs.MsQuic.Tests;
 
