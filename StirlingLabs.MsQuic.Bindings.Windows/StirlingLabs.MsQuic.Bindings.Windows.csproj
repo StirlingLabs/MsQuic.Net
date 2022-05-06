@@ -5,7 +5,7 @@
         <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Nullable>enable</Nullable>
-        <RootNamespace>Microsoft.Quic</RootNamespace>
+        <RootNamespace>StirlingLabs.MsQuic.Bindings</RootNamespace>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 

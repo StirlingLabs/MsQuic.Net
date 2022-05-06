@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <PackageId>Microsoft.Quic</PackageId>
-        <AssemblyName>Microsoft.Quic</AssemblyName>
+        <PackageId>StirlingLabs.MsQuic.Bindings</PackageId>
+        <AssemblyName>StirlingLabs.MsQuic.Bindings</AssemblyName>
         <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Nullable>enable</Nullable>
-        <RootNamespace>Microsoft.Quic</RootNamespace>
+        <RootNamespace>StirlingLabs.MsQuic.Bindings</RootNamespace>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 
