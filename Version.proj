@@ -9,8 +9,14 @@
         <GitDefaultBranch>main</GitDefaultBranch>
         <GitCommitsIgnoreMerges>true</GitCommitsIgnoreMerges>
         <VersionNetDebugImportance>high</VersionNetDebugImportance>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+        <PackageIcon>SL.png</PackageIcon>
     </PropertyGroup>
     <ImportGroup>
         <Import Project="StirlingLabs.Version/Version.proj" />
     </ImportGroup>
+    <ItemGroup>
+        <None Include="$(MSBuildThisFileDirectory)LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" Visible="false"/>
+        <None Include="$(MSBuildThisFileDirectory)SL.png" Pack="true" PackagePath="SL.png" Visible="false"/>
+    </ItemGroup>
 </Project>

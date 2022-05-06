@@ -4,5 +4,11 @@
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/StirlingLabs/MsQuic.Net.git</RepositoryUrl>
         <PackageProjectUrl>https://github.com/StirlingLabs/MsQuic.Net</PackageProjectUrl>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+        <PackageIcon>SL.png</PackageIcon>
     </PropertyGroup>
+    <ItemGroup>
+        <None Include="$(MSBuildThisFileDirectory)LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" Visible="false"/>
+        <None Include="$(MSBuildThisFileDirectory)SL.png" Pack="true" PackagePath="SL.png" Visible="false"/>
+    </ItemGroup>
 </Project>
