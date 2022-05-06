@@ -1,4 +1,4 @@
-![MsQuic.Net](msquic-dotnet.jpg)
+![MsQuic.Net](https://raw.githubusercontent.com/StirlingLabs/MsQuic.Net/main/msquic-dotnet.jpg)
 
 ### .Net wrapper for [MsQuic](https://github.com/microsoft/msquic)
 
