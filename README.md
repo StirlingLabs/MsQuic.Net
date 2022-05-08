@@ -4,13 +4,17 @@
 
 ## 🚀 How to install
 
-Configure [GitHub Packages for Stirling Labs](/StirlingLabs/Logging/blob/master/docs/GitHubPackages.md), then you can just:
+Using NuGet, it's simple. E.g.
 
 ```bash
-> dotnet add PROJECT package MsQuic.Net
+> dotnet add PROJECT package StirlingLabs.MsQuic
 ```
 
 or just use NuGet however you would normally.
+
+
+If you're inside Stirling Labs and want to run pre-release builds, configure [GitHub Packages for Stirling Labs](https://github.com/StirlingLabs/Logging/blob/master/docs/GitHubPackages.md).
+
 
 ## 👀 What's included
 
