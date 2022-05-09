@@ -12,6 +12,10 @@
         <PackageOutputPath>../artifacts</PackageOutputPath>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\StirlingLabs.MsQuic.Bindings\StirlingLabs.MsQuic.Bindings.csproj">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
@@ -52,6 +56,10 @@
             </ItemGroup>
         </When>
     </Choose>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
 
     <ItemGroup>
         <None Remove="*.DotSettings" />
