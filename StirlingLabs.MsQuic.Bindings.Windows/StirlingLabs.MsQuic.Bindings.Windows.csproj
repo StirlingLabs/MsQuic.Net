@@ -26,4 +26,9 @@
         <Import Project="../MsQuicVersion.proj" />
     </ImportGroup>
 
+    <PropertyGroup>
+        <Description>
+            Windows-specific bindings for StirlingLabs.MsQuic
+        </Description>
+    </PropertyGroup>
 </Project>

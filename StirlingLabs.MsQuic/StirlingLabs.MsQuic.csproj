@@ -14,6 +14,9 @@
 
     <PropertyGroup>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Description>
+            Cross-platform wrapper for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
+        </Description>
     </PropertyGroup>
 
     <ItemGroup>

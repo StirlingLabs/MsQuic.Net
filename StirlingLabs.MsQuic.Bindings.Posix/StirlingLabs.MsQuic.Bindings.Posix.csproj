@@ -26,4 +26,10 @@
         <Import Project="../MsQuicVersion.proj" />
     </ImportGroup>
 
+    <PropertyGroup>
+        <Description>
+            Posix bindings for StirlingLabs.MsQuic
+        </Description>
+    </PropertyGroup>
+
 </Project>
