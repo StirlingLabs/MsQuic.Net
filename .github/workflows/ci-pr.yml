@@ -86,7 +86,7 @@ jobs:
         name: Mac
         needs: skip_check
         if: ${{ (needs.skip_check.outputs.should_skip != 'true') && (needs.skip_check.outputs.is_not_release == 'true') }}
-        runs-on: macos-11
+        runs-on: macos-12
         env:
             DOTNET_NOLOGO: true
             DOTNET_CLI_TELEMETRY_OPTOUT: true

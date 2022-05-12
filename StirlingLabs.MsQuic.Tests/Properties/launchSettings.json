@@ -2,7 +2,7 @@
   "profiles": {
     "StirlingLabs.MsQuic.Tests": {
       "commandName": "Project",
-      "commandLineArgs": "Test1",
+      "commandLineArgs": "--filter RoundTripSimpleStreamTest",
       "nativeDebugging": true
     }
   }

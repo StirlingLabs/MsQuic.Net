@@ -64,7 +64,7 @@ jobs:
     
     macos:
         name: Mac
-        runs-on: macos-11
+        runs-on: macos-12
         env:
             DOTNET_NOLOGO: true
             DOTNET_CLI_TELEMETRY_OPTOUT: true

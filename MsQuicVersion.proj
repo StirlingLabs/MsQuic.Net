@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <Version>2.0.1</Version>
+        <Version>2.0.2</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/StirlingLabs/MsQuic.Net.git</RepositoryUrl>
         <PackageProjectUrl>https://github.com/StirlingLabs/MsQuic.Net</PackageProjectUrl>

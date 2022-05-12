@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+    <PropertyGroup>
+        <StirlingLabsMsQuicVersion>@(PackageReference->WithMetadataValue('Identity','StirlingLabs.MsQuic.Bindings')->Metadata('Version'))</StirlingLabsMsQuicVersion>
+        <StirlingLabsMsQuicVersion Condition="'$(StirlingLabsMsQuicVersion)'==''">*</StirlingLabsMsQuicVersion>
+        <StirlingLabsMsQuicSelectRuntimeId Condition="'$(StirlingLabsMsQuicSelectRuntimeId)'==''">$(RuntimeIdentifier)</StirlingLabsMsQuicSelectRuntimeId>
+        <StirlingLabsMsQuicSelectRuntimeId Condition="'$(StirlingLabsMsQuicSelectRuntimeId)'==''">$(DefaultAppHostRuntimeIdentifier)</StirlingLabsMsQuicSelectRuntimeId>
+        <StirlingLabsMsQuicSelectRuntimeId Condition="'$(StirlingLabsMsQuicSelectRuntimeId)'==''">$(NETCoreSdkPortableRuntimeIdentifier)</StirlingLabsMsQuicSelectRuntimeId>
+        <StirlingLabsMsQuicSelectRuntimeId Condition="'$(StirlingLabsMsQuicSelectRuntimeId)'==''">$(NETCoreSdkRuntimeIdentifier)</StirlingLabsMsQuicSelectRuntimeId>
+        <StirlingLabsMsQuicSelectAllRuntimes Condition="'$(StirlingLabsMsQuicSelectAllRuntimes)'!='False' AND '$(StirlingLabsMsQuicSelectAllRuntimes)'!=''">True</StirlingLabsMsQuicSelectAllRuntimes>
+        <StirlingLabsMsQuicSelectAllRuntimes Condition="'$(StirlingLabsMsQuicSelectAllRuntimes)'=='False' OR '$(StirlingLabsMsQuicSelectAllRuntimes)'!='True'">False</StirlingLabsMsQuicSelectAllRuntimes>
+        <BuildDependsOn>StirlingLabsMsQuicSelectRuntime;$(BuildDependsOn)</BuildDependsOn>
+        <CompileDependsOn>StirlingLabsMsQuicSelectRuntime;$(BuildDependsOn)</CompileDependsOn>
+        <ResolveReferencesDependsOn>StirlingLabsMsQuicSelectRuntime;$(ResolveReferencesDependsOn)</ResolveReferencesDependsOn>
+        <GenerateNuspecDependsOn>StirlingLabsMsQuicSelectRuntime;$(GenerateNuspecDependsOn)</GenerateNuspecDependsOn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(StirlingLabsMsQuicSelectRuntimeId)'==''">
+        <StirlingLabsMsQuicSelectRuntimeId Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</StirlingLabsMsQuicSelectRuntimeId>
+        <StirlingLabsMsQuicSelectRuntimeId Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx</StirlingLabsMsQuicSelectRuntimeId>
+        <StirlingLabsMsQuicSelectRuntimeId Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</StirlingLabsMsQuicSelectRuntimeId>
+    </PropertyGroup>
+
+    <ItemGroup Condition="!$(StirlingLabsMsQuicSelectAllRuntimes) AND !$(StirlingLabsMsQuicSelectRuntimeId.StartsWith('linux'))">
+        <PackageReference Remove="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.libsa"/>
+    </ItemGroup>
+    <ItemGroup Condition="$(StirlingLabsMsQuicSelectAllRuntimes) OR $(StirlingLabsMsQuicSelectRuntimeId.StartsWith('linux'))">
+        <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.libsa" Version="$(StirlingLabsMsQuicVersion)"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="!$(StirlingLabsMsQuicSelectAllRuntimes) AND !$(StirlingLabsMsQuicSelectRuntimeId.StartsWith('osx'))">
+        <ProjectReference Remove="StirlingLabs.MsQuic.Bindings.runtime.osx.libsa"/>
+    </ItemGroup>
+    <ItemGroup Condition="$(StirlingLabsMsQuicSelectAllRuntimes) OR $(StirlingLabsMsQuicSelectRuntimeId.StartsWith('osx'))">
+        <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.osx.libsa" Version="$(StirlingLabsMsQuicVersion)"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="!$(StirlingLabsMsQuicSelectAllRuntimes) AND !$(StirlingLabsMsQuicSelectRuntimeId.StartsWith('win'))">
+        <PackageReference Remove="StirlingLabs.MsQuic.Bindings.runtime.win-x64.libsa"/>
+    </ItemGroup>
+    <ItemGroup Condition="$(StirlingLabsMsQuicSelectAllRuntimes) OR $(StirlingLabsMsQuicSelectRuntimeId.StartsWith('win'))">
+        <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.win-x64.libsa" Version="$(StirlingLabsMsQuicVersion)"/>
+    </ItemGroup>
+</Project>

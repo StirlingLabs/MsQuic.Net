@@ -33,7 +33,7 @@
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
             <ReferenceOutputAssembly>False</ReferenceOutputAssembly>
         </ProjectReference>
-        <ProjectReference Include="..\StirlingLabs.MsQuic.Bindings.osx-x64\osx-x64.csproj">
+        <ProjectReference Include="..\StirlingLabs.MsQuic.Bindings.osx\osx.csproj" Condition="'$(TargetFramework)'!='net5.0'">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>
             <ReferenceOutputAssembly>False</ReferenceOutputAssembly>
         </ProjectReference>
@@ -53,4 +53,14 @@
         <Import Project="../MsQuicVersion.proj" />
     </ImportGroup>
 
+    <ItemGroup>
+        <None Include="StirlingLabs.MsQuic.Bindings.props">
+            <Pack>true</Pack>
+            <PackagePath>build;buildCrossTargeting</PackagePath>
+        </None>
+        <None Include="StirlingLabs.MsQuic.Bindings.targets">
+            <Pack>true</Pack>
+            <PackagePath>build;buildCrossTargeting</PackagePath>
+        </None>
+    </ItemGroup>
 </Project>
