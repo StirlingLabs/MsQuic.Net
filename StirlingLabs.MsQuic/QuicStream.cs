@@ -101,17 +101,19 @@ public sealed partial class QuicStream : IDisposable
 
     public QuicRegistration Registration { get; }
 
+    private long _id = -1;
+
     public unsafe long Id
     {
         get {
-
+            if (_id != -1) return _id;
             var rs = Interlocked.CompareExchange(ref _runState, 0, 0);
             if (rs <= 0) throw new InvalidOperationException("Stream is not initialized.");
             uint l = sizeof(long);
             long value = -1;
             var status = Registration.Table.GetParam(Handle, QUIC_PARAM_STREAM_ID, &l, &value);
             AssertSuccess(status);
-            return value;
+            return _id = value;
         }
         //set => Registration.Table.SetParam(Handle, QUIC_PARAM_LEVEL.QUIC_PARAM_LEVEL_STREAM, QUIC_PARAM_STREAM_ID, 8, &value);
     }
