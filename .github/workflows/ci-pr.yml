@@ -15,7 +15,8 @@ jobs:
         continue-on-error: true
         runs-on: ubuntu-20.04
         outputs:
-            should_skip: ${{ steps.skip_check.outputs.should_skip }}
+            should_skip: 'true' 
+            real: ${{ steps.skip_check.outputs.should_skip }}
             is_not_release: ${{ steps.release_check.outputs.is_not_release }}
         steps:
             -   name: Check if duplicate action

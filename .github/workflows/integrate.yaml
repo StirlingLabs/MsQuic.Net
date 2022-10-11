@@ -1,0 +1,183 @@
+name: Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ '**', '!gh-pages', '!coverage' ]
+    types: [ opened, reopened, ready_for_review, synchronize ]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  
+  threshold:
+    name: Check Status
+    uses: StirlingLabs/Actions/.github/workflows/threshold.yaml@main
+
+  download:
+    name: Upstream Binaries
+    needs: threshold
+    if: |
+      needs.threshold.outputs.continue == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check Upstream API
+        id: check
+        env:
+          upstream: 'microsoft/msquic'
+          canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64'
+        run: |
+          latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest))
+          packagesUrl="https://api.nuget.org/v3-flatcontainer/${canary}/index.json"
+          packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
+          echo "::set-output name=packagesUrl::${packagesUrl}"
+          # Check if latestRelease is already a package
+          jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "$latestRelease" && exists="true" || exists="false"
+          if [[ "$exists" == "true" ]] ; then
+            echo "ok"
+          else
+            echo "Latest upstream release doesn't exist as NuPkg, we need to do some work."
+            echo "::set-output name=releasesUrl::https://api.github.com/repos/${upstream}/releases"
+            echo "::set-output name=tagsUrl::https://api.github.com/repos/${upstream}/tags"
+          fi
+          echo "::set-output name=exists::$exists"
+
+      - name: Filter Upsream Releases
+        if: steps.check.outputs.exists == 'false'
+        id: filter
+        env:
+          packagesUrl: ${{ steps.check.outputs.packagesUrl }}
+          releasesUrl: ${{ steps.check.outputs.releasesUrl }}
+        run: |
+          packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
+          releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
+          releasesNeeded=""
+          space=""
+          releaseList=$(jq -r ".[].tag_name" <<< $releasesJson)
+          echo "..."
+          echo "release list ${releaseList}"
+          for release in ${releaseList[@]} ; do
+            jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "$release" && exists="true" || exists="false"
+            if [[ "$exists" != "true" ]] ; then
+              major="${release%%.*}"
+              if [ ${major:1} -ge 2 ] ; then
+                releasesNeeded="${releasesNeeded}${space}${release}"
+                space=" "
+              fi
+            fi
+          done
+          echo "releases needed ${releasesNeeded}"
+          echo "::set-output name=releasesNeeded::${releasesNeeded}"
+
+      - name: Get Data
+        if: steps.check.outputs.exists == 'false'
+        env:
+          releasesNeeded: ${{ steps.filter.outputs.releasesNeeded }}
+          releasesUrl: ${{ steps.check.outputs.releasesUrl }}
+          tagsUrl: ${{ steps.check.outputs.tagsUrl }}
+          rids: 'linux-x64 osx win-x64'
+        run: |
+          releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
+          tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl}))
+          versionMatrix="["
+          versionMatrixComma=""
+          for release in ${releasesNeeded[@]} ; do
+            echo "$release processing"
+            relJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $releasesJson)
+            gitBranch=$(jq -r ".target_commitish" <<< $relJson)
+            gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson)
+            mkdir ${release}
+            ridMatrix="[ "
+            ridMatrixComma=""
+            versionRidMatrix=""
+            versionRidMatrixComma=""
+            for rid in $rids ; do
+              echo " - $rid"
+              ridMatrix="${ridMatrix}${ridMatrixComma}'${rid}'"
+              ridMatrixComma=", "
+              v=${release:1}
+              case "${rid}" in
+                linux-x64)  platform="linux_x64" && file="libmsquic.so.$v" ;;
+                osx)        platform="macos_universal" && file="libmsquic.$v.dylib" ;;
+                win-x64)    platform="windows_x64" && file="msquic.dll" ;;
+                *)          echo "Do not recognise ${os}." && exit 1 ;;
+              esac
+              filename="msquic_${platform}_Release_openssl.zip"
+              url=$(jq -r ".assets | .[] | select(.name==\"${filename}\") | .browser_download_url" <<< $relJson)
+              wget --quiet ${url}
+              unzip ${filename} -d ${platform}
+              mkdir ${release}/${rid}
+              mv ${platform}/bin/${file} ${release}/${rid}/${file}
+              rm -Rf ${platform} ${filename}
+              versionRidMatrix="${versionRidMatrix}${versionRidMatrixComma}{ 'rid': '$rid', 'file': '$file' }"
+              versionRidMatrixComma=",  "
+            done
+            ridMatrix="${ridMatrix} ]"
+            echo "ridMatrix: ${ridMatrix}"
+            versionMatrix="${versionMatrix}${versionMatrixComma} { 'version': '$release', 'gitBranch': '$gitBranch', 'gitCommit': '$gitCommit', 'platforms': [ '$versionRidMatrix' ] }"
+          done
+          versionMatrix="${versionMatrix}]"
+          echo "versionMatrix: ${versionMatrix}"
+          ls -lR
+          echo "::set-output name=ridMatrix::${ridMatrix}"
+          echo "::set-output name=versionMatrix::${versionMatrix}"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Binaries
+          path: ${{ steps.filter.outputs.releasesNeeded }}
+
+  publish:
+    name: Publish NuPkg
+    needs: [ download ]
+    strategy: 
+      matrix:
+        version: ${{ fromJson(needs.download.outputs.versionMatrix) }}
+        rid: ${{ fromJson(needs.download.outputs.ridMatrix) }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Debugging
+        env: 
+          rid: ${{ matrix.rid }}
+          version: ${{ matrix.version }}
+          gitBranch: ${{ matrix.gitBranch }}
+          gitCommit: ${{ matrix.gitCommit }}
+          filename: ${{ matrix.version.platforms.file }}
+          versionRid: ${{ matrix.version.platforms.rid }}
+        run: |
+          echo "rid ${rid}"
+          echo "version ${version}"
+          echo "gitBranch ${gitBranch}"
+          echo "gitCommit ${gitCommit}"
+          echo "filename ${filename}"
+          echo "versionRid ${versionRid}"
+
+      - name: Get Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create NuSpec
+        uses: StirlingLabs/CreateNuSpecAction@main
+        with:
+          id: StirlingLabs.MsQuic.Bindings.runtime.${{ matrix.rid }}.openssl
+          version: ${{ matrix.version }}
+          title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
+          description: |
+            Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
+          fileSources: ${{ matrix.version }}/${{ matrix.rid }}/${{ matrix.version.platforms.file }}
+          fileTargets: runtimes/${{ matrix.rid }}/native/${{ matrix.version.platforms.file }}
+          readme: StirlingLabs.MsQuic.Bindings/README.md
+
+
+  build:
+    name: Build
+    needs: [ threshold, download ]
+    if: |
+      false &&
+      needs.threshold.outputs.continue == 'true' && 
+      needs.threshold.outputs.release != 'true'
+    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@main
+  
