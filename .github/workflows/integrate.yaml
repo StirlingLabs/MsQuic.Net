@@ -23,6 +23,10 @@ jobs:
     if: |
       needs.threshold.outputs.continue == 'true'
     runs-on: ubuntu-22.04
+    outputs:
+      manifest: $${{ steps.download.outputs.manifest }}
+      matrixVersion: ${{ steps.download.outputs.versionArray }}
+      matrixRid: ${{ steps.download.outputs.ridArray }}
     steps:
       - name: Check Upstream API
         id: check
@@ -73,6 +77,7 @@ jobs:
           echo "::set-output name=releasesNeeded::${releasesNeeded}"
 
       - name: Get Data
+        id: download
         if: steps.check.outputs.exists == 'false'
         env:
           releasesNeeded: ${{ steps.filter.outputs.releasesNeeded }}
@@ -82,22 +87,21 @@ jobs:
         run: |
           releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
           tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl}))
-          versionMatrix="["
-          versionMatrixComma=""
+          manifest="["
+          manifestComma=""
+          versionArray="[ "
+          versionArrayComma=""
           for release in ${releasesNeeded[@]} ; do
-            echo "$release processing"
+            echo "Processing $release"
             relJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $releasesJson)
             gitBranch=$(jq -r ".target_commitish" <<< $relJson)
             gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson)
             mkdir ${release}
-            ridMatrix="[ "
-            ridMatrixComma=""
-            versionRidMatrix=""
-            versionRidMatrixComma=""
+            manifestRid=""
+            manifestRidComma=""
+            ridExist=0
             for rid in $rids ; do
               echo " - $rid"
-              ridMatrix="${ridMatrix}${ridMatrixComma}'${rid}'"
-              ridMatrixComma=", "
               v=${release:1}
               case "${rid}" in
                 linux-x64)  platform="linux_x64" && file="libmsquic.so.$v" ;;
@@ -107,32 +111,93 @@ jobs:
               esac
               filename="msquic_${platform}_Release_openssl.zip"
               url=$(jq -r ".assets | .[] | select(.name==\"${filename}\") | .browser_download_url" <<< $relJson)
-              wget --quiet ${url}
-              unzip ${filename} -d ${platform}
-              mkdir ${release}/${rid}
-              mv ${platform}/bin/${file} ${release}/${rid}/${file}
-              rm -Rf ${platform} ${filename}
-              versionRidMatrix="${versionRidMatrix}${versionRidMatrixComma}{ 'rid': '$rid', 'file': '$file' }"
-              versionRidMatrixComma=",  "
+              if [ "$url" != "" ] ; then
+                ridExist=$((ridExist+1))
+                echo "Downloading $url"
+                wget --quiet ${url}
+                unzip ${filename} -d ${platform}
+                mkdir ${release}/${rid}
+                finalFilename=${release}/${rid}/${file}
+                mv ${platform}/bin/${file} ${finalFilename}
+                sudo chmod +r ${finalFilename}
+                rm -Rf ${platform} ${filename}
+                manifestRid="${manifestRid}${manifestRidComma}{ \"rid\": \"${rid}\", \"file\": \"${finalFilename}\" }"
+                manifestRidComma=",  "
+              else
+                echo "   - This release has no files for ${rid}."
+              fi
             done
-            ridMatrix="${ridMatrix} ]"
-            echo "ridMatrix: ${ridMatrix}"
-            versionMatrix="${versionMatrix}${versionMatrixComma} { 'version': '$release', 'gitBranch': '$gitBranch', 'gitCommit': '$gitCommit', 'platforms': [ '$versionRidMatrix' ] }"
+            if [ $ridExist -gt 0 ] ; then
+              versionArray="${versionArray}${versionArrayComma}\"${rid}\""
+              versionArrayComma=", "
+              manifest="${manifest}${manifestComma}{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $manifestRid ] }"
+              manifestComma=", "
+              echo "   - Found files for $ridExist RIDs."
+            else
+              echo "   - This release has no files at all."
+              rmdir ${release}
+            fi
           done
-          versionMatrix="${versionMatrix}]"
-          echo "versionMatrix: ${versionMatrix}"
-          ls -lR
-          echo "::set-output name=ridMatrix::${ridMatrix}"
-          echo "::set-output name=versionMatrix::${versionMatrix}"
+          versionArray="${versionArray} ]"
+          manifest="${manifest}]"
+          # Array of possible RIDs
+          ridArray="[ "
+          ridArrayComma=""
+          for rid in $rids ; do
+            ridArray="${ridArray}${ridArrayComma}\"${rid}\""
+            ridArrayComma=", "
+          done
+          ridArray="${ridArray} ]"
+          #
+          # Outputs
+          echo "::set-output name=versionArray::${versionArray}"
+          echo "::set-output name=ridArray::${ridArray}"
+          echo "::set-output name=manifest::${manifest}"
 
       - name: Upload Artifacts
+        if: false
         uses: actions/upload-artifact@v3
         with:
-          name: Binaries
-          path: ${{ steps.filter.outputs.releasesNeeded }}
+          name: Upstream Binaries
+          path: "./*"
+
+  development:
+    name: Understand Matrix 
+    needs: [ download ]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Debugging
+        env: 
+          matrixRid: ${{ needs.download.outputs.matrixRid }}
+          matrixVersion: ${{ needs.download.outputs.matrixVersion }}
+        run: |
+          echo "matrixRid ${matrixRid}"
+          echo "matrixVersion ${matrixVersion}"
+
+  understand:
+    name: Understand Matrix 
+    needs: [ download ]
+    strategy: 
+      matrix: 
+        version: ${{ fromJson(needs.download.outputs.matrixVersion) }}
+        rid: ${{ fromJson(needs.download.outputs.matrixRid) }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Debugging
+        env: 
+          version: ${{ matrix.version }}
+          rid: ${{ matrix.rid }}
+          json: ${{ needs.download.outputs.json }}
+        run: |
+          echo "version ${version}, rid ${rid}"
+          gitCommit=$(jq -r ".[] | select(.version==\"${version}\") | .gitCommit" <<< $json)
+          gitBranch=$(jq -r ".[] | select(.version==\"${version}\") | .gitBranch" <<< $json)
+          filename=$(jq -r ".[] | select(.version==\"${version}\") | .platforms | select(.rid==\"${rid}\") | .file" <<< $json)
+          echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, filename ${filename}"
 
   publish:
     name: Publish NuPkg
+    if: false
     needs: [ download ]
     strategy: 
       matrix:
@@ -157,9 +222,11 @@ jobs:
           echo "versionRid ${versionRid}"
 
       - name: Get Artifacts
+        if: false
         uses: actions/download-artifact@v3
 
       - name: Create NuSpec
+        id: nuspec
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
           id: StirlingLabs.MsQuic.Bindings.runtime.${{ matrix.rid }}.openssl
@@ -170,6 +237,12 @@ jobs:
           fileSources: ${{ matrix.version }}/${{ matrix.rid }}/${{ matrix.version.platforms.file }}
           fileTargets: runtimes/${{ matrix.rid }}/native/${{ matrix.version.platforms.file }}
           readme: StirlingLabs.MsQuic.Bindings/README.md
+
+      - name: Build NuPkg
+        env:
+          filename: ${{ steps.nuspec.outputs.filename }}
+        run: |
+          nuget pack $filename
 
 
   build:
