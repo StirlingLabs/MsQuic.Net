@@ -262,4 +262,4 @@ jobs:
           key: ${{ secrets.NUGET_STIRLINGLABS_API_KEY }}
           url: "https://api.nuget.org/v3/index.json"
         run: |
-          dotnet nuget push *.nupkg -k $key -s $url -n 1 --skip-duplicate
+          dotnet nuget push *.nupkg -k $key -s $url --no-symbols --skip-duplicate
