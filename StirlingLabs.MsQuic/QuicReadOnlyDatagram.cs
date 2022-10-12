@@ -26,7 +26,6 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
         Connection = connection;
         State = state;
     }
-    protected const QUIC_DATAGRAM_SEND_STATE Unknown = (QUIC_DATAGRAM_SEND_STATE)(-1);
     public QuicPeerConnection Connection { get; }
     public GCHandle GcHandle { get; }
 
@@ -37,28 +36,28 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
             _state = value;
             switch (value)
             {
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_SENT:
+                case QUIC_DATAGRAM_SEND_STATE.SENT:
                     IsSent = true;
                     _tcsSent.TrySetResult(true);
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS:
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED:
+                case QUIC_DATAGRAM_SEND_STATE.ACKNOWLEDGED_SPURIOUS:
+                case QUIC_DATAGRAM_SEND_STATE.ACKNOWLEDGED:
                     IsAcknowledged = true;
                     IsLost = false;
                     IsDiscarded = false;
                     _tcsSent.TrySetResult(true);
                     _tcsAcknowledged.TrySetResult(true);
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_SUSPECT:
+                case QUIC_DATAGRAM_SEND_STATE.LOST_SUSPECT:
                     IsLost = true;
                     _tcsAcknowledged.TrySetException(new TimeoutException("Datagram suspected lost."));
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED:
+                case QUIC_DATAGRAM_SEND_STATE.LOST_DISCARDED:
                     IsLost = true;
                     IsDiscarded = true;
                     _tcsAcknowledged.TrySetException(new Exception("Datagram lost and discarded."));
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_CANCELED:
+                case QUIC_DATAGRAM_SEND_STATE.CANCELED:
                     IsCanceled = true;
                     _tcsSent.TrySetCanceled();
                     _tcsAcknowledged.TrySetCanceled();
@@ -72,7 +71,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
     {
         get => _flags;
         set {
-            if (State != Unknown)
+            if (State != QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
                 throw new InvalidOperationException("You can't update the send flags after the datagram is sent.");
 
             _flags = value;
@@ -171,7 +170,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
 
     public bool Send()
     {
-        if (State != Unknown)
+        if (State != QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
             return false;
 
         Connection.SendDatagram(this);
@@ -182,15 +181,14 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
         switch (State)
         {
             default:
-            case Unknown:
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_UNKNOWN:
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_SENT:
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_CANCELED:
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED:
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS:
+            case QUIC_DATAGRAM_SEND_STATE.UNKNOWN:
+            case QUIC_DATAGRAM_SEND_STATE.SENT:
+            case QUIC_DATAGRAM_SEND_STATE.CANCELED:
+            case QUIC_DATAGRAM_SEND_STATE.ACKNOWLEDGED:
+            case QUIC_DATAGRAM_SEND_STATE.ACKNOWLEDGED_SPURIOUS:
                 return false;
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_SUSPECT:
-            case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED:
+            case QUIC_DATAGRAM_SEND_STATE.LOST_SUSPECT:
+            case QUIC_DATAGRAM_SEND_STATE.LOST_DISCARDED:
                 Connection.SendDatagram(this);
                 return true;
         }

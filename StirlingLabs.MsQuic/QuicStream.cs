@@ -44,7 +44,7 @@ public sealed partial class QuicStream : IDisposable
     private bool _started;
 
     public unsafe QuicStream(QuicRegistration registration, QuicPeerConnection connection,
-        QUIC_STREAM_OPEN_FLAGS flags = QUIC_STREAM_OPEN_FLAGS.QUIC_STREAM_OPEN_FLAG_0_RTT)
+        QUIC_STREAM_OPEN_FLAGS flags = QUIC_STREAM_OPEN_FLAGS.ZERO_RTT)
     {
         _gcHandle = GCHandle.Alloc(this);
         Registration = registration;
@@ -185,7 +185,7 @@ public sealed partial class QuicStream : IDisposable
 
         switch (@event.Type)
         {
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_RECEIVE: {
+            case QUIC_STREAM_EVENT_TYPE.RECEIVE: {
                 ref var typedEvent = ref @event.RECEIVE;
 
                 Trace.TraceInformation(
@@ -209,7 +209,7 @@ public sealed partial class QuicStream : IDisposable
                     : QUIC_STATUS_PENDING;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_START_COMPLETE: {
+            case QUIC_STREAM_EVENT_TYPE.START_COMPLETE: {
                 ref var typedEvent = ref @event.START_COMPLETE;
                 var status = typedEvent.Status;
                 if (IsSuccess(status))
@@ -230,12 +230,12 @@ public sealed partial class QuicStream : IDisposable
                     Close();
                 }
                 Trace.TraceInformation(
-                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{Id={typedEvent.ID},Status={GetNameForStatus(status)},PeerAccepted={typedEvent.PeerAccepted},Started={_started}}}");
+                    $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{Id={typedEvent.ID},Status={status},PeerAccepted={typedEvent.PeerAccepted},Started={_started}}}");
                 OnStartComplete(status);
                 return 0;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_SEND_COMPLETE: {
+            case QUIC_STREAM_EVENT_TYPE.SEND_COMPLETE: {
                 var pClientCtx = (IntPtr)@event.SEND_COMPLETE.ClientContext;
                 var gchClientCtx = GCHandle.FromIntPtr(pClientCtx);
                 var disposable = (IDisposable?)gchClientCtx.Target;
@@ -246,14 +246,14 @@ public sealed partial class QuicStream : IDisposable
                 return 0;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_IDEAL_SEND_BUFFER_SIZE: {
+            case QUIC_STREAM_EVENT_TYPE.IDEAL_SEND_BUFFER_SIZE: {
                 ref var typedEvent = ref @event.IDEAL_SEND_BUFFER_SIZE;
                 IdealSendBufferSize = typedEvent.ByteCount;
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 return 0;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_SEND_SHUTDOWN_COMPLETE: {
+            case QUIC_STREAM_EVENT_TYPE.SEND_SHUTDOWN_COMPLETE: {
                 var graceful = @event.SEND_SHUTDOWN_COMPLETE.Graceful != 0;
                 if (graceful)
                 {
@@ -267,12 +267,12 @@ public sealed partial class QuicStream : IDisposable
                 return 0;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_PEER_RECEIVE_ABORTED: {
+            case QUIC_STREAM_EVENT_TYPE.PEER_RECEIVE_ABORTED: {
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 return 0;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE: {
+            case QUIC_STREAM_EVENT_TYPE.SHUTDOWN_COMPLETE: {
                 ref var typedEvent = ref @event.SHUTDOWN_COMPLETE;
                 // TODO: ???
                 var connectionShutdown = typedEvent.ConnectionShutdown != 0;
@@ -290,7 +290,7 @@ public sealed partial class QuicStream : IDisposable
                 return 0;
             }
 
-            case QUIC_STREAM_EVENT_TYPE.QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN: {
+            case QUIC_STREAM_EVENT_TYPE.PEER_SEND_SHUTDOWN: {
                 Interlocked.Exchange(ref _runState, -1);
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 return 0;
@@ -666,7 +666,7 @@ public sealed partial class QuicStream : IDisposable
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
-    public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
+    public unsafe Task SendAsync(ReadOnlyMemory<byte> data, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.NONE)
     {
         CheckDisposed();
         if (data.IsEmpty) throw new ArgumentException("Should not be empty.", nameof(data));
@@ -689,7 +689,7 @@ public sealed partial class QuicStream : IDisposable
     }
 
     public Task SendAsync(params ReadOnlyMemory<byte>[] data)
-        => SendAsync(QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE, data);
+        => SendAsync(QUIC_SEND_FLAGS.NONE, data);
 
     public Task SendAsync(ReadOnlyMemory<byte>[] data, QUIC_SEND_FLAGS flags)
         => SendAsync(flags, data);
@@ -726,7 +726,7 @@ public sealed partial class QuicStream : IDisposable
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "Disposed in callback")]
-    public unsafe Task SendAsync(QUIC_BUFFER* buf, uint count, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE)
+    public unsafe Task SendAsync(QUIC_BUFFER* buf, uint count, QUIC_SEND_FLAGS flags = QUIC_SEND_FLAGS.NONE)
     {
         CheckDisposed();
         if (buf == null) throw new ArgumentNullException(nameof(buf));
@@ -747,8 +747,8 @@ public sealed partial class QuicStream : IDisposable
         if (IsStarted) return;
 
         var status = Registration.Table.StreamStart(Handle,
-            QUIC_STREAM_START_FLAGS.QUIC_STREAM_START_FLAG_IMMEDIATE
-            | QUIC_STREAM_START_FLAGS.QUIC_STREAM_START_FLAG_SHUTDOWN_ON_FAIL);
+            QUIC_STREAM_START_FLAGS.IMMEDIATE
+            | QUIC_STREAM_START_FLAGS.SHUTDOWN_ON_FAIL);
         AssertNotFailure(status);
         if (status == QUIC_STATUS_PENDING)
         {
@@ -797,8 +797,8 @@ public sealed partial class QuicStream : IDisposable
 
         // TODO: validate _runState?
         Registration.Table.StreamShutdown(Handle,
-            QUIC_STREAM_SHUTDOWN_FLAGS.QUIC_STREAM_SHUTDOWN_FLAG_IMMEDIATE
-            | QUIC_STREAM_SHUTDOWN_FLAGS.QUIC_STREAM_SHUTDOWN_FLAG_ABORT, 0);
+            QUIC_STREAM_SHUTDOWN_FLAGS.IMMEDIATE
+            | QUIC_STREAM_SHUTDOWN_FLAGS.ABORT, 0);
     }
 
     internal unsafe void Reject()

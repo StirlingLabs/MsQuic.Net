@@ -1,4 +1,4 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("StirlingLabs.MsQuic.Bindings.Posix")]
-[assembly: InternalsVisibleTo("StirlingLabs.MsQuic.Bindings.Windows")]
+[assembly: InternalsVisibleTo("StirlingLabs.MsQuic")]
+[assembly: InternalsVisibleTo("StirlingLabs.MsQuic.Tests")]

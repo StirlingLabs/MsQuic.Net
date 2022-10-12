@@ -36,7 +36,7 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
     }
 
     public unsafe QuicDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> mem,
-        QUIC_DATAGRAM_SEND_STATE state = Unknown)
+        QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         MemoryOwner = mem;
@@ -45,7 +45,7 @@ public sealed class QuicDatagramOwnedManagedMemory : QuicDatagram
         NativeMemory.Free(_quicBuffer);
     }
     public unsafe QuicDatagramOwnedManagedMemory(QuicPeerConnection connection, IMemoryOwner<byte> memOwner, Memory<byte> mem,
-        QUIC_DATAGRAM_SEND_STATE state = Unknown)
+        QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         MemoryOwner = memOwner;

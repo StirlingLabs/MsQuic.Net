@@ -201,7 +201,7 @@ public class Quic0RttTests
                 _serverSide.IncomingStream += (_, stream) => {
                     serverStream = stream;
                     serverStream.DataReceived += x => {
-                        was0Rtt = (x.LastReceiveFlags & QUIC_RECEIVE_FLAGS.QUIC_RECEIVE_FLAG_0_RTT) != 0;
+                        was0Rtt = (x.LastReceiveFlags & QUIC_RECEIVE_FLAGS.ZERO_RTT) != 0;
 
                         // ReSharper disable once VariableHidesOuterVariable
                         var dataReceived = new Span<byte>((byte*)ptrDataReceived, dataLength);
@@ -215,8 +215,8 @@ public class Quic0RttTests
         }
 
         var task = clientStream.SendAsync(utf8Hello,
-            QUIC_SEND_FLAGS.QUIC_SEND_FLAG_ALLOW_0_RTT
-            | QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
+            QUIC_SEND_FLAGS.ALLOW_0_RTT
+            | QUIC_SEND_FLAGS.FIN);
 
         clientStream.Start();
         _clientSide.Start("localhost", _port);

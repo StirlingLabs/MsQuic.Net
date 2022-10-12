@@ -82,7 +82,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
     {
         switch (@event.Type)
         {
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_CONNECTED: {
+            case QUIC_CONNECTION_EVENT_TYPE.CONNECTED: {
                 ref var typedEvent = ref @event.CONNECTED;
 
                 IsResumed = typedEvent.SessionResumed != 0;
@@ -100,12 +100,12 @@ public sealed class QuicServerConnection : QuicPeerConnection
                     fixed (byte* pTicket = ResumptionTicket.Span)
                     {
                         Registration.Table.ConnectionSendResumptionTicket(Handle,
-                            QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
+                            QUIC_SEND_RESUMPTION_FLAGS.FINAL,
                             (ushort)ResumptionTicket.Length, pTicket);
                     }
                 else
                     Registration.Table.ConnectionSendResumptionTicket(Handle,
-                        QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
+                        QUIC_SEND_RESUMPTION_FLAGS.FINAL,
                         0, null);
 
                 OnConnected();
@@ -125,7 +125,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
                 return QUIC_STATUS_SUCCESS;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
+            case QUIC_CONNECTION_EVENT_TYPE.SHUTDOWN_COMPLETE: {
                 //Close();
                 GcHandle.Free();
                 //RunState ?
@@ -134,7 +134,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
             }
 
             // server only
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMED: {
+            case QUIC_CONNECTION_EVENT_TYPE.RESUMED: {
                 ref var typedEvent = ref @event.RESUMED;
                 var length = (int)typedEvent.ResumptionStateLength;
                 var resumptionState = new ReadOnlySpan<byte>(typedEvent.ResumptionState, length);
@@ -155,7 +155,7 @@ public sealed class QuicServerConnection : QuicPeerConnection
                         QUIC_PARAM_TLS_NEGOTIATED_ALPN,
                         pBufSize,
                         pBufSize);
-                    if (status == QUIC_STATUS_BUFFER_TOO_SMALL)
+                    if (status == BUFFER_TOO_SMALL)
                         Debug.Assert(bufSize != 0);
                     else
                         AssertSuccess(status);

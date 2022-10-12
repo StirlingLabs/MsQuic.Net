@@ -41,7 +41,7 @@ public sealed class QuicServerConfiguration : QuicPeerConfiguration
             PeerBidiStreamCount = ushort.MaxValue,
             SendBufferingEnabled = 0,
             DatagramReceiveEnabled = 1,
-            ServerResumptionLevel = (byte)QUIC_SERVER_RESUMPTION_LEVEL.QUIC_SERVER_RESUME_AND_ZERORTT,
+            ServerResumptionLevel = (byte)QUIC_SERVER_RESUMPTION_LEVEL.RESUME_AND_ZERORTT,
             KeepAliveIntervalMs = 5000,
             IsSet = new()
             {
@@ -112,28 +112,28 @@ public sealed class QuicServerConfiguration : QuicPeerConfiguration
         QUIC_CREDENTIAL_FLAGS credentialFlags = DefaultQuicCredentialFlags,
         QUIC_ALLOWED_CIPHER_SUITE_FLAGS allowedCipherSuiteFlags = DefaultAllowedCipherSuites)
     {
-        credentialFlags &= ~ QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_CLIENT;
+        credentialFlags &= ~ QUIC_CREDENTIAL_FLAGS.CLIENT;
 
         if (allowedCipherSuiteFlags != 0)
-            credentialFlags |= QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_SET_ALLOWED_CIPHER_SUITES;
+            credentialFlags |= QUIC_CREDENTIAL_FLAGS.SET_ALLOWED_CIPHER_SUITES;
 
         // if we defer certificate validation, we must receive certificate recevied callbacks  
         if ((credentialFlags & (
-                QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_DEFER_CERTIFICATE_VALIDATION
-                | QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED
-            )) == QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_DEFER_CERTIFICATE_VALIDATION)
-            credentialFlags |= QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED;
+                QUIC_CREDENTIAL_FLAGS.DEFER_CERTIFICATE_VALIDATION
+                | QUIC_CREDENTIAL_FLAGS.INDICATE_CERTIFICATE_RECEIVED
+            )) == QUIC_CREDENTIAL_FLAGS.DEFER_CERTIFICATE_VALIDATION)
+            credentialFlags |= QUIC_CREDENTIAL_FLAGS.INDICATE_CERTIFICATE_RECEIVED;
 
         // if we get credentials received callbacks, we want them to be portable
         if ((credentialFlags & (
-                QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED
-                | QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES
-            )) != QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED)
-            credentialFlags |= QUIC_CREDENTIAL_FLAGS.QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES;
+                QUIC_CREDENTIAL_FLAGS.INDICATE_CERTIFICATE_RECEIVED
+                | QUIC_CREDENTIAL_FLAGS.USE_PORTABLE_CERTIFICATES
+            )) != QUIC_CREDENTIAL_FLAGS.INDICATE_CERTIFICATE_RECEIVED)
+            credentialFlags |= QUIC_CREDENTIAL_FLAGS.USE_PORTABLE_CERTIFICATES;
 
         var credConfig = new QUIC_CREDENTIAL_CONFIG
         {
-            Type = QUIC_CREDENTIAL_TYPE.QUIC_CREDENTIAL_TYPE_CERTIFICATE_PKCS12,
+            Type = QUIC_CREDENTIAL_TYPE.CERTIFICATE_PKCS12,
             CertificatePkcs12 = &quicCert->Pkcs12,
             Flags = credentialFlags,
             AllowedCipherSuites = allowedCipherSuiteFlags

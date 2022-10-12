@@ -155,8 +155,8 @@ public abstract partial class QuicPeerConnection : IDisposable
 
         Registration.Table.ConnectionShutdown(Handle,
             silent
-                ? QUIC_CONNECTION_SHUTDOWN_FLAGS.QUIC_CONNECTION_SHUTDOWN_FLAG_SILENT
-                : QUIC_CONNECTION_SHUTDOWN_FLAGS.QUIC_CONNECTION_SHUTDOWN_FLAG_NONE, 0);
+                ? QUIC_CONNECTION_SHUTDOWN_FLAGS.SILENT
+                : QUIC_CONNECTION_SHUTDOWN_FLAGS.NONE, 0);
     }
 
     public unsafe void Close()
@@ -276,7 +276,7 @@ public abstract partial class QuicPeerConnection : IDisposable
     }
     public QuicStream OpenUnidirectionalStream(bool notStarted = false)
     {
-        var stream = new QuicStream(Registration, this, QUIC_STREAM_OPEN_FLAGS.QUIC_STREAM_OPEN_FLAG_UNIDIRECTIONAL);
+        var stream = new QuicStream(Registration, this, QUIC_STREAM_OPEN_FLAGS.UNIDIRECTIONAL);
         AddStream(stream, true);
         if (!notStarted)
             stream.Start();
@@ -525,7 +525,7 @@ public abstract partial class QuicPeerConnection : IDisposable
     {
         switch (@event.Type)
         {
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED: {
+            case QUIC_CONNECTION_EVENT_TYPE.PEER_STREAM_STARTED: {
                 ref var typedEvent = ref @event.PEER_STREAM_STARTED;
                 var stream = new QuicStream(Registration, this, typedEvent.Stream, typedEvent.Flags);
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Pending");
@@ -540,14 +540,14 @@ public abstract partial class QuicPeerConnection : IDisposable
                 return QUIC_STATUS_SUCCESS;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_IDEAL_PROCESSOR_CHANGED: {
+            case QUIC_CONNECTION_EVENT_TYPE.IDEAL_PROCESSOR_CHANGED: {
                 ref var typedEvent = ref @event.IDEAL_PROCESSOR_CHANGED;
                 IdealProcessor = typedEvent.IdealProcessor;
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{IdealProcessor={IdealProcessor}}}");
                 return QUIC_STATUS_SUCCESS;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_DATAGRAM_RECEIVED: {
+            case QUIC_CONNECTION_EVENT_TYPE.DATAGRAM_RECEIVED: {
                 ref var typedEvent = ref @event.DATAGRAM_RECEIVED;
 
                 Trace.TraceInformation(
@@ -567,7 +567,7 @@ public abstract partial class QuicPeerConnection : IDisposable
                 return QUIC_STATUS_SUCCESS;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_DATAGRAM_SEND_STATE_CHANGED: {
+            case QUIC_CONNECTION_EVENT_TYPE.DATAGRAM_SEND_STATE_CHANGED: {
                 ref var typedEvent = ref @event.DATAGRAM_SEND_STATE_CHANGED;
 
                 var dg = (IQuicReadOnlyDatagram?)GCHandle.FromIntPtr((IntPtr)typedEvent.ClientContext).Target!;
@@ -578,7 +578,7 @@ public abstract partial class QuicPeerConnection : IDisposable
 
                 return QUIC_STATUS_SUCCESS;
             }
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_DATAGRAM_STATE_CHANGED: {
+            case QUIC_CONNECTION_EVENT_TYPE.DATAGRAM_STATE_CHANGED: {
                 ref var typedEvent = ref @event.DATAGRAM_STATE_CHANGED;
                 DatagramsAllowed = typedEvent.SendEnabled != 0;
                 MaxSendLength = typedEvent.MaxSendLength;
@@ -586,52 +586,52 @@ public abstract partial class QuicPeerConnection : IDisposable
                     $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{DatagramsAllowed={DatagramsAllowed},MaxSendLength={MaxSendLength}}}");
                 return QUIC_STATUS_SUCCESS;
             }
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_LOCAL_ADDRESS_CHANGED: {
+            case QUIC_CONNECTION_EVENT_TYPE.LOCAL_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
                 LocalEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LocalEndPoint={LocalEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_ADDRESS_CHANGED: {
+            case QUIC_CONNECTION_EVENT_TYPE.PEER_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
                 RemoteEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{RemoteEndPoint={RemoteEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             // client only
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED: {
+            case QUIC_CONNECTION_EVENT_TYPE.RESUMPTION_TICKET_RECEIVED: {
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             }
             // server only
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMED: {
+            case QUIC_CONNECTION_EVENT_TYPE.RESUMED: {
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_CONNECTED:
+            case QUIC_CONNECTION_EVENT_TYPE.CONNECTED:
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} Unhandled");
                 break;
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT: {
+            case QUIC_CONNECTION_EVENT_TYPE.SHUTDOWN_INITIATED_BY_TRANSPORT: {
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 ref var typedEvent = ref @event.SHUTDOWN_INITIATED_BY_TRANSPORT;
                 OnShutdown(ref typedEvent);
                 break;
             }
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER: {
+            case QUIC_CONNECTION_EVENT_TYPE.SHUTDOWN_INITIATED_BY_PEER: {
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 ref var typedEvent = ref @event.SHUTDOWN_INITIATED_BY_PEER;
                 OnShutdown(ref typedEvent);
                 break;
             }
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
+            case QUIC_CONNECTION_EVENT_TYPE.SHUTDOWN_COMPLETE: {
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 ref var typedEvent = ref @event.SHUTDOWN_COMPLETE;
                 OnShutdownComplete(ref typedEvent);
                 break;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_STREAMS_AVAILABLE: {
+            case QUIC_CONNECTION_EVENT_TYPE.STREAMS_AVAILABLE: {
                 ref var typedEvent = ref @event.STREAMS_AVAILABLE;
                 AllowedBidirectionalStreams = typedEvent.BidirectionalCount;
                 AllowedUnidirectionalStreams = typedEvent.UnidirectionalCount;
@@ -639,14 +639,14 @@ public abstract partial class QuicPeerConnection : IDisposable
                     $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{AllowedBidirectionalStreams={AllowedBidirectionalStreams},AllowedBidirectionalStreams={AllowedUnidirectionalStreams}}}");
                 return QUIC_STATUS_SUCCESS;
             }
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_NEEDS_STREAMS: {
+            case QUIC_CONNECTION_EVENT_TYPE.PEER_NEEDS_STREAMS: {
                 LimitingRemoteStreams = true;
                 Trace.TraceInformation(
                     $"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LimitingRemoteStreams={LimitingRemoteStreams}}}");
                 break;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED: {
+            case QUIC_CONNECTION_EVENT_TYPE.PEER_CERTIFICATE_RECEIVED: {
                 ref var typedEvent = ref @event.PEER_CERTIFICATE_RECEIVED;
 
                 var certBuf = (QUIC_BUFFER*)typedEvent.Certificate;
@@ -691,7 +691,8 @@ public abstract partial class QuicPeerConnection : IDisposable
 
                 var status = OnCertificateReceived(cert, chainContainer, typedEvent.DeferredErrorFlags, typedEvent.DeferredStatus);
 
-                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{Result={GetNameForStatus(status)}}}");
+                //Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{Result={GetNameForStatus(status)}}}");
+                Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{Result={status}}}");
 
                 return status;
 

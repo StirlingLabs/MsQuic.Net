@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <Nullable>enable</Nullable>
-        <TargetFrameworks>net5.0;net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+        <TargetFrameworks>net6.0;netstandard2.0;netstandard2.1</TargetFrameworks>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
@@ -28,9 +28,10 @@
     <ItemGroup>
         <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" PrivateAssets="all" />
         <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
-        <PackageReference Include="StirlingLabs.sockaddr.Net" Version="22.10.0" />
         <PackageReference Include="StirlingLabs.Utilities" Version="22.9.1" />
         <PackageReference Include="StirlingLabs.Utilities.Magic" Version="22.9.1" />
+        <PackageReference Include="StirlingLabs.BigSpans" Version="22.9.4" />
+        <PackageReference Include="StirlingLabs.sockaddr.Net" Version="22.10.0" />
         <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
         <PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.1" />

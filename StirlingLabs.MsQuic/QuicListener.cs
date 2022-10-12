@@ -98,7 +98,7 @@ public sealed class QuicListener : IDisposable
     {
         switch (@event.Type)
         {
-            case QUIC_LISTENER_EVENT_TYPE.QUIC_LISTENER_EVENT_NEW_CONNECTION:
+            case QUIC_LISTENER_EVENT_TYPE.NEW_CONNECTION:
                 ref var typedEvent = ref @event.NEW_CONNECTION;
                 var connection = new QuicServerConnection(Configuration, typedEvent.Connection, typedEvent.Info);
                 var status = Registration.Table.ConnectionSetConfiguration(typedEvent.Connection, Configuration.Handle);
@@ -194,7 +194,7 @@ public sealed class QuicListener : IDisposable
             fixed (QUIC_BUFFER* pQuicAlpns = quicAlpns)
             {
                 AssertSuccess(
-                    Registration.Table.ListenerStart(Handle, pQuicAlpns, 1, (StirlingLabs.MsQuic.Bindings.sockaddr*)sa));
+                    Registration.Table.ListenerStart(Handle, pQuicAlpns, 1, (QuicAddr*)sa));
             }
 
             Interlocked.Exchange(ref _runState, 2);
