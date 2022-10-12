@@ -1,4 +1,4 @@
-name: Integration
+name: Upstream
 
 on:
   push:
@@ -13,15 +13,8 @@ defaults:
 
 jobs:
   
-  threshold:
-    name: Check Status
-    uses: StirlingLabs/Actions/.github/workflows/threshold.yaml@main
-
   download:
-    name: Upstream Binaries
-    needs: threshold
-    if: |
-      needs.threshold.outputs.continue == 'true'
+    name: Get Upstream Binaries
     runs-on: ubuntu-22.04
     outputs:
       manifest: ${{ steps.download.outputs.manifest }}
@@ -29,6 +22,7 @@ jobs:
       matrixRid: ${{ steps.download.outputs.ridArray }}
       readme: ${{ steps.ancillary.outputs.readme }}
       icon: ${{ steps.ancillary.outputs.icon }}
+      gitUrl: ${{ steps.check.outputs.gitUrl }}
       
     steps:
       - name: Check Upstream API
@@ -252,7 +246,7 @@ jobs:
           fileTargets: runtimes/${{ matrix.rid }}/native/${{ steps.data.outputs.filename }}
           readme: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.readme }}
           icon: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.icon }}
-          gitUrl: ${{ steps.check.outputs.gitUrl }}
+          gitUrl: ${{ needs.download.outputs.gitUrl }}
           gitBranch: ${{ steps.data.outputs.gitBranch }}
           gitCommit: ${{ steps.data.outputs.gitCommit }}
 
@@ -261,14 +255,11 @@ jobs:
           nuspec: ${{ steps.nuspec.outputs.filename }}
         run: |
           nuget pack $nuspec
+          ls -la
 
-
-  build:
-    name: Build
-    needs: [ threshold, download ]
-    if: |
-      false &&
-      needs.threshold.outputs.continue == 'true' && 
-      needs.threshold.outputs.release != 'true'
-    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@main
-  
+      - name: Push NuPkg to NuGet
+        env:
+          key: ${{ secrets.NUGET_STIRLINGLABS_API_KEY }}
+          url: "https://api.nuget.org/v3/index.json"
+        run: |
+          dotnet nuget push *.nupkg -k $key -s $url -n 1 --skip-duplicate
