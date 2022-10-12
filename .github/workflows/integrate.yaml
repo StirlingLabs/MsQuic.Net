@@ -27,6 +27,9 @@ jobs:
       manifest: ${{ steps.download.outputs.manifest }}
       matrixVersion: ${{ steps.download.outputs.versionArray }}
       matrixRid: ${{ steps.download.outputs.ridArray }}
+      readme: ${{ steps.ancillary.outputs.readme }}
+      icon: ${{ steps.ancillary.outputs.icon }}
+      
     steps:
       - name: Check Upstream API
         id: check
@@ -154,23 +157,58 @@ jobs:
           echo "::set-output name=ridArray::${ridArray}"
           echo "::set-output name=manifest::${manifest}"
 
-      - name: Upload Artifacts
+      - name: Upload Libraries
         uses: actions/upload-artifact@v3
         with:
-          name: Upstream Binaries
+          name: Libraries
           path: "./*"
+
+      - name: Get Source
+        uses: actions/checkout@v3
+
+      - name: Show Tree
+        id: ancillary
+        env:
+          readme: StirlingLabs.MsQuic.Bindings/README.md
+          icon: SL.png
+        run: |
+          if [[ -s "${readme}" ]] ; then
+            echo "::set-output name=readme::${readme}"
+          else
+            echo "README Not found at ${readme}"
+          fi
+          if [[ -s "${icon}" ]] ; then
+            echo "::set-output name=icon::${icon}"
+          else
+            echo "README Not found at ${icon}"
+          fi
+          find .
+
+      - name: Upload Ancillaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: Ancillaries
+          path: |
+            ${{ steps.ancillary.outputs.readme }}
+            ${{ steps.ancillary.outputs.icon }}
 
   publish:
     name: Publish NuPkg
     needs: [ download ]
     strategy:
       fail-fast: true
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         version: ${{ fromJson(needs.download.outputs.matrixVersion) }}
         rid: ${{ fromJson(needs.download.outputs.matrixRid) }}
     runs-on: ubuntu-22.04
     steps:
+      - name: Get Libraries
+        id: libraries
+        uses: actions/download-artifact@v3
+        with:
+          name: Libraries
+
       - name: Data
         id: data
         env: 
@@ -189,15 +227,11 @@ jobs:
           echo "::set-output name=location::${location}"
           echo "::set-output name=filename::${filename}"
 
-      - name: Get Artifacts
+      - name: Get Ancillaries
+        id: ancillaries
         uses: actions/download-artifact@v3
-
-      - name: Show Artifacts
-        run: |
-          find .
-
-      - name: Get Source
-        uses: actions/checkout@v3
+        with:
+          name: Ancillaries
 
       - name: Show File Context
         run: |
@@ -212,9 +246,10 @@ jobs:
           title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
           description: |
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
-          fileSources: ${{ steps.data.outputs.location }}
+          fileSources: ${{ steps.libraries.outputs.download-path }}/${{ steps.data.outputs.location }}
           fileTargets: runtimes/${{ matrix.rid }}/native/${{ steps.data.outputs.filename }}
-          readme: StirlingLabs.MsQuic.Bindings/README.md
+          readme: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.readme }}
+          icon: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.icon }}
 
       - name: Build NuPkg
         env:
