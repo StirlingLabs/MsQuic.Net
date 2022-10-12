@@ -76,7 +76,7 @@ public sealed class QuicClientConnection : QuicPeerConnection
     {
         switch (@event.Type)
         {
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_CONNECTED: {
+            case QUIC_CONNECTION_EVENT_TYPE.CONNECTED: {
                 ref var typedEvent = ref @event.CONNECTED;
 
                 IsResumed = typedEvent.SessionResumed != 0;
@@ -94,12 +94,12 @@ public sealed class QuicClientConnection : QuicPeerConnection
                     fixed (byte* pTicket = ResumptionTicket.Span)
                     {
                         Registration.Table.ConnectionSendResumptionTicket(Handle,
-                            QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
+                            QUIC_SEND_RESUMPTION_FLAGS.FINAL,
                             (ushort)ResumptionTicket.Length, pTicket);
                     }
                 else
                     Registration.Table.ConnectionSendResumptionTicket(Handle,
-                        QUIC_SEND_RESUMPTION_FLAGS.QUIC_SEND_RESUMPTION_FLAG_FINAL,
+                        QUIC_SEND_RESUMPTION_FLAGS.FINAL,
                         0, null);
 
                 OnConnected();
@@ -110,14 +110,14 @@ public sealed class QuicClientConnection : QuicPeerConnection
                 return 0;
             }
 
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
+            case QUIC_CONNECTION_EVENT_TYPE.SHUTDOWN_COMPLETE:
                 Interlocked.Exchange(ref RunState, 0);
                 GcHandle.Free();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
                 return 0;
 
             // client only
-            case QUIC_CONNECTION_EVENT_TYPE.QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED: {
+            case QUIC_CONNECTION_EVENT_TYPE.RESUMPTION_TICKET_RECEIVED: {
                 ref var typedEvent = ref @event.RESUMPTION_TICKET_RECEIVED;
                 var length = (int)typedEvent.ResumptionTicketLength;
                 var resumptionTicket = new ReadOnlySpan<byte>(typedEvent.ResumptionTicket, length);
@@ -175,10 +175,10 @@ public sealed class QuicClientConnection : QuicPeerConnection
             return tcs.Task;
         }
         if (IsFailure(status))
-            throw new QuicException(status);
+            throw new MsQuicException(status);
 
         throw new NotImplementedException("Unknown non-failure status",
-            new QuicException(status));
+            new MsQuicException(status));
     }
 
     protected override int DefaultCertificateReceivedStatus

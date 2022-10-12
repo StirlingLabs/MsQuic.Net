@@ -33,7 +33,7 @@ public sealed class QuicDatagramManagedMemory : QuicDatagram
         MemoryHandle.Dispose();
     }
 
-    public unsafe QuicDatagramManagedMemory(QuicPeerConnection connection, Memory<byte> mem, QUIC_DATAGRAM_SEND_STATE state = Unknown)
+    public unsafe QuicDatagramManagedMemory(QuicPeerConnection connection, Memory<byte> mem, QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         Memory = mem;
@@ -67,7 +67,7 @@ public sealed class QuicReadOnlyDatagramManagedMemory : QuicReadOnlyDatagram
     }
 
     public unsafe QuicReadOnlyDatagramManagedMemory(QuicPeerConnection connection, ReadOnlyMemory<byte> mem,
-        QUIC_DATAGRAM_SEND_STATE state = Unknown)
+        QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         Memory = mem;

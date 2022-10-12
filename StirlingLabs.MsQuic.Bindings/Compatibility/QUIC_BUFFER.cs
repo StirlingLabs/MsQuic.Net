@@ -7,7 +7,6 @@ namespace StirlingLabs.MsQuic.Bindings;
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public unsafe partial struct QUIC_BUFFER : IEquatable<QUIC_BUFFER>
 {
-    public Span<byte> Span => new(Buffer, (int)Length);
     public ReadOnlySpan<byte> ReadOnlySpan => new(Buffer, (int)Length);
 
     [SuppressMessage("Usage", "CA2225", Justification = "See Span")]

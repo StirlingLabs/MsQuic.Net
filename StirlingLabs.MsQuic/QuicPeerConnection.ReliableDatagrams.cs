@@ -144,8 +144,8 @@ public abstract partial class QuicPeerConnection
 
         OutboundAcknowledgementStream!.SendAsync(mem,
             OutboundAcknowledgementStream.IsStarted
-                ? QUIC_SEND_FLAGS.QUIC_SEND_FLAG_NONE
-                : QUIC_SEND_FLAGS.QUIC_SEND_FLAG_START);
+                ? QUIC_SEND_FLAGS.NONE
+                : QUIC_SEND_FLAGS.START);
 
         return true;
     }

@@ -224,7 +224,7 @@ public class RoundTripTests
 
         }
 
-        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
+        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.FIN);
 
         output.WriteLine("waiting for serverStream.DataReceived");
         cde.Wait();
@@ -300,7 +300,7 @@ public class RoundTripTests
 
         }
 
-        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.QUIC_SEND_FLAG_FIN);
+        var task = clientStream.SendAsync(utf8Hello, QUIC_SEND_FLAGS.FIN);
 
         output.WriteLine("waiting for serverStream.DataReceived");
         cde.Wait();
@@ -330,20 +330,20 @@ public class RoundTripTests
         datagram.StateChanged += (_, state) => {
             switch (state)
             {
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_SENT:
+                case QUIC_DATAGRAM_SEND_STATE.SENT:
                     dgSent = true;
                     cde.Signal();
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED:
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS when Debugger.IsAttached:
+                case QUIC_DATAGRAM_SEND_STATE.ACKNOWLEDGED:
+                case QUIC_DATAGRAM_SEND_STATE.ACKNOWLEDGED_SPURIOUS when Debugger.IsAttached:
                     dgAcknowledged = true;
                     cde.Signal();
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_SUSPECT when Debugger.IsAttached:
+                case QUIC_DATAGRAM_SEND_STATE.LOST_SUSPECT when Debugger.IsAttached:
                     // ok
                     break;
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED:
-                case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_CANCELED:
+                case QUIC_DATAGRAM_SEND_STATE.LOST_DISCARDED:
+                case QUIC_DATAGRAM_SEND_STATE.CANCELED:
                 default:
                     Assert.Fail(state.ToString());
                     return;

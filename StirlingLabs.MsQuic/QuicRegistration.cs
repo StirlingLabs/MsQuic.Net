@@ -25,7 +25,7 @@ public sealed unsafe class QuicRegistration : IDisposable
         _table = Open();
         QUIC_HANDLE* handle = null;
         QUIC_REGISTRATION_CONFIG config;
-        config.ExecutionProfile = QUIC_EXECUTION_PROFILE.QUIC_EXECUTION_PROFILE_LOW_LATENCY;
+        config.ExecutionProfile = QUIC_EXECUTION_PROFILE.LOW_LATENCY;
         config.AppName = name.Pointer;
         var status = _table->RegistrationOpen(&config, &handle);
         if (IsFailure(status))
@@ -63,7 +63,7 @@ public sealed unsafe class QuicRegistration : IDisposable
     }
 
     public void Shutdown(ulong code)
-        => Table.RegistrationShutdown(Handle, QUIC_CONNECTION_SHUTDOWN_FLAGS.QUIC_CONNECTION_SHUTDOWN_FLAG_NONE, code);
+        => Table.RegistrationShutdown(Handle, QUIC_CONNECTION_SHUTDOWN_FLAGS.NONE, code);
 
     public void Dispose()
     {

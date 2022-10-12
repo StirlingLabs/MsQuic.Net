@@ -42,7 +42,7 @@ public sealed class QuicDatagramExternalMemoryReliable : QuicDatagramReliable
     }
 
     public unsafe QuicDatagramExternalMemoryReliable(QuicPeerConnection connection, byte* pStart, uint length, Action<IntPtr> freeCallback,
-        QUIC_DATAGRAM_SEND_STATE state = Unknown)
+        QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         _externalMemStart = pStart;

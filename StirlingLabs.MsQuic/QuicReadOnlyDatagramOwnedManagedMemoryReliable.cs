@@ -35,7 +35,7 @@ public sealed class QuicReadOnlyDatagramOwnedManagedMemoryReliable : QuicReadOnl
     }
 
     public unsafe QuicReadOnlyDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> mem,
-        QUIC_DATAGRAM_SEND_STATE state = Unknown)
+        QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         MemoryOwner = mem;
@@ -44,7 +44,7 @@ public sealed class QuicReadOnlyDatagramOwnedManagedMemoryReliable : QuicReadOnl
         NativeMemory.Free(_quicBuffer);
     }
     public unsafe QuicReadOnlyDatagramOwnedManagedMemoryReliable(QuicPeerConnection connection, IMemoryOwner<byte> memOwner,
-        ReadOnlyMemory<byte> mem, QUIC_DATAGRAM_SEND_STATE state = Unknown)
+        ReadOnlyMemory<byte> mem, QUIC_DATAGRAM_SEND_STATE state = QUIC_DATAGRAM_SEND_STATE.UNKNOWN)
         : base(connection, state)
     {
         MemoryOwner = memOwner;
