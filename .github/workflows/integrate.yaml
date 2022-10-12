@@ -51,6 +51,7 @@ jobs:
             echo "::set-output name=tagsUrl::https://api.github.com/repos/${upstream}/tags"
           fi
           echo "::set-output name=exists::$exists"
+          echo "::set-output name=gitUrl::git://github.com/${upstream}.git"
 
       - name: Filter Upsream Releases
         if: steps.check.outputs.exists == 'false'
@@ -226,6 +227,7 @@ jobs:
           echo "::set-output name=gitBranch::${gitBranch}"
           echo "::set-output name=location::${location}"
           echo "::set-output name=filename::${filename}"
+          echo "::set-output name=version::${version:1}" # remove the v
 
       - name: Get Ancillaries
         id: ancillaries
@@ -242,7 +244,7 @@ jobs:
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
           id: StirlingLabs.MsQuic.Bindings.runtime.${{ matrix.rid }}.openssl
-          version: ${{ matrix.version }}
+          version: ${{ steps.data.outputs.version }}
           title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
           description: |
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
@@ -250,6 +252,9 @@ jobs:
           fileTargets: runtimes/${{ matrix.rid }}/native/${{ steps.data.outputs.filename }}
           readme: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.readme }}
           icon: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.icon }}
+          gitUrl: ${{ steps.check.outputs.gitUrl }}
+          gitBranch: ${{ steps.data.outputs.gitBranch }}
+          gitCommit: ${{ steps.data.outputs.gitCommit }}
 
       - name: Build NuPkg
         env:
