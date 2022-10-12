@@ -24,7 +24,7 @@ jobs:
       needs.threshold.outputs.continue == 'true'
     runs-on: ubuntu-22.04
     outputs:
-      manifest: $${{ steps.download.outputs.manifest }}
+      manifest: ${{ steps.download.outputs.manifest }}
       matrixVersion: ${{ steps.download.outputs.versionArray }}
       matrixRid: ${{ steps.download.outputs.ridArray }}
     steps:
@@ -121,14 +121,14 @@ jobs:
                 mv ${platform}/bin/${file} ${finalFilename}
                 sudo chmod +r ${finalFilename}
                 rm -Rf ${platform} ${filename}
-                manifestRid="${manifestRid}${manifestRidComma}{ \"rid\": \"${rid}\", \"file\": \"${finalFilename}\" }"
+                manifestRid="${manifestRid}${manifestRidComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${file}\" }"
                 manifestRidComma=",  "
               else
                 echo "   - This release has no files for ${rid}."
               fi
             done
             if [ $ridExist -gt 0 ] ; then
-              versionArray="${versionArray}${versionArrayComma}\"${rid}\""
+              versionArray="${versionArray}${versionArrayComma}\"${release}\""
               versionArrayComma=", "
               manifest="${manifest}${manifestComma}{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $manifestRid ] }"
               manifestComma=", "
@@ -155,75 +155,53 @@ jobs:
           echo "::set-output name=manifest::${manifest}"
 
       - name: Upload Artifacts
-        if: false
         uses: actions/upload-artifact@v3
         with:
           name: Upstream Binaries
           path: "./*"
 
-  development:
-    name: Understand Matrix 
+  publish:
+    name: Publish NuPkg
     needs: [ download ]
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Debugging
-        env: 
-          matrixRid: ${{ needs.download.outputs.matrixRid }}
-          matrixVersion: ${{ needs.download.outputs.matrixVersion }}
-        run: |
-          echo "matrixRid ${matrixRid}"
-          echo "matrixVersion ${matrixVersion}"
-
-  understand:
-    name: Understand Matrix 
-    needs: [ download ]
-    strategy: 
-      matrix: 
+    strategy:
+      fail-fast: true
+      max-parallel: 2
+      matrix:
         version: ${{ fromJson(needs.download.outputs.matrixVersion) }}
         rid: ${{ fromJson(needs.download.outputs.matrixRid) }}
     runs-on: ubuntu-22.04
     steps:
-      - name: Debugging
+      - name: Data
+        id: data
         env: 
           version: ${{ matrix.version }}
           rid: ${{ matrix.rid }}
-          json: ${{ needs.download.outputs.json }}
+          json: ${{ needs.download.outputs.manifest }}
         run: |
-          echo "version ${version}, rid ${rid}"
-          gitCommit=$(jq -r ".[] | select(.version==\"${version}\") | .gitCommit" <<< $json)
-          gitBranch=$(jq -r ".[] | select(.version==\"${version}\") | .gitBranch" <<< $json)
-          filename=$(jq -r ".[] | select(.version==\"${version}\") | .platforms | select(.rid==\"${rid}\") | .file" <<< $json)
-          echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, filename ${filename}"
-
-  publish:
-    name: Publish NuPkg
-    if: false
-    needs: [ download ]
-    strategy: 
-      matrix:
-        version: ${{ fromJson(needs.download.outputs.versionMatrix) }}
-        rid: ${{ fromJson(needs.download.outputs.ridMatrix) }}
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Debugging
-        env: 
-          rid: ${{ matrix.rid }}
-          version: ${{ matrix.version }}
-          gitBranch: ${{ matrix.gitBranch }}
-          gitCommit: ${{ matrix.gitCommit }}
-          filename: ${{ matrix.version.platforms.file }}
-          versionRid: ${{ matrix.version.platforms.rid }}
-        run: |
-          echo "rid ${rid}"
-          echo "version ${version}"
-          echo "gitBranch ${gitBranch}"
-          echo "gitCommit ${gitCommit}"
-          echo "filename ${filename}"
-          echo "versionRid ${versionRid}"
+          vJson=$(jq -r ".[] | select(.version==\"${version}\")" <<< $json)
+          gitCommit=$(jq -r ".gitCommit" <<< $vJson)
+          gitBranch=$(jq -r ".gitBranch" <<< $vJson)
+          location=$(jq -r ".platforms[] | select(.rid==\"${rid}\") | .location" <<< $vJson)
+          filename=$(jq -r ".platforms[] | select(.rid==\"${rid}\") | .filename" <<< $vJson)
+          echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
+          echo "::set-output name=gitCommit::${gitCommit}"
+          echo "::set-output name=gitBranch::${gitBranch}"
+          echo "::set-output name=location::${location}"
+          echo "::set-output name=filename::${filename}"
 
       - name: Get Artifacts
-        if: false
         uses: actions/download-artifact@v3
+
+      - name: Show Artifacts
+        run: |
+          find .
+
+      - name: Get Source
+        uses: actions/checkout@v3
+
+      - name: Show File Context
+        run: |
+          find .
 
       - name: Create NuSpec
         id: nuspec
@@ -234,15 +212,15 @@ jobs:
           title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
           description: |
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
-          fileSources: ${{ matrix.version }}/${{ matrix.rid }}/${{ matrix.version.platforms.file }}
-          fileTargets: runtimes/${{ matrix.rid }}/native/${{ matrix.version.platforms.file }}
+          fileSources: ${{ steps.data.outputs.location }}
+          fileTargets: runtimes/${{ matrix.rid }}/native/${{ steps.data.outputs.filename }}
           readme: StirlingLabs.MsQuic.Bindings/README.md
 
       - name: Build NuPkg
         env:
-          filename: ${{ steps.nuspec.outputs.filename }}
+          nuspec: ${{ steps.nuspec.outputs.filename }}
         run: |
-          nuget pack $filename
+          nuget pack $nuspec
 
 
   build:
