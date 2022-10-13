@@ -2,14 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Bindings", "StirlingLabs.MsQuic.Bindings\StirlingLabs.MsQuic.Bindings.csproj", "{A5578279-8147-4706-8870-E783D998B91B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "linux-x64", "StirlingLabs.MsQuic.Bindings.linux-x64\linux-x64.csproj", "{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "osx", "StirlingLabs.MsQuic.Bindings.osx\osx.csproj", "{756BA69B-C5C7-411C-8984-42810047A7AC}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "win-x64", "StirlingLabs.MsQuic.Bindings.win-x64\win-x64.csproj", "{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "runtimes", "runtimes", "{8CAFA5C7-97FF-4907-AEF9-D85108D9A8C6}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic", "StirlingLabs.MsQuic\StirlingLabs.MsQuic.csproj", "{6848CC48-14FA-4D86-8D1B-A913058727D4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StirlingLabs.MsQuic.Tests", "StirlingLabs.MsQuic.Tests\StirlingLabs.MsQuic.Tests.csproj", "{70A486DC-8DCE-4219-BAE7-704CF9B51BA3}"
@@ -31,18 +23,6 @@ Global
 		{A5578279-8147-4706-8870-E783D998B91B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A5578279-8147-4706-8870-E783D998B91B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A5578279-8147-4706-8870-E783D998B91B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{756BA69B-C5C7-411C-8984-42810047A7AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{756BA69B-C5C7-411C-8984-42810047A7AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{756BA69B-C5C7-411C-8984-42810047A7AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{756BA69B-C5C7-411C-8984-42810047A7AC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6848CC48-14FA-4D86-8D1B-A913058727D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6848CC48-14FA-4D86-8D1B-A913058727D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6848CC48-14FA-4D86-8D1B-A913058727D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -53,8 +33,5 @@ Global
 		{70A486DC-8DCE-4219-BAE7-704CF9B51BA3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{8B2DC31C-0724-47BB-AE3D-A21EEA00CDBB} = {8CAFA5C7-97FF-4907-AEF9-D85108D9A8C6}
-		{756BA69B-C5C7-411C-8984-42810047A7AC} = {8CAFA5C7-97FF-4907-AEF9-D85108D9A8C6}
-		{8587E9A8-2A2E-4C8B-881C-D9478B3B62D8} = {8CAFA5C7-97FF-4907-AEF9-D85108D9A8C6}
 	EndGlobalSection
 EndGlobal
