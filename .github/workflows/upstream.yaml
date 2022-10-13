@@ -102,9 +102,9 @@ jobs:
               echo " - $rid"
               v=${release:1}
               case "${rid}" in
-                linux-x64)  platform="linux_x64" && file="libmsquic.so.$v" ;;
-                osx)        platform="macos_universal" && file="libmsquic.$v.dylib" ;;
-                win-x64)    platform="windows_x64" && file="msquic.dll" ;;
+                linux-x64)  platform="linux_x64" && file="libmsquic.so.$v" && ours="libmsquic-openssl.so" ;;
+                osx)        platform="macos_universal" && file="libmsquic.$v.dylib" && ours="libmsquic-openssl.dylib" ;;
+                win-x64)    platform="windows_x64" && file="msquic.dll" && ours="msquic-openssl.dll" ;;
                 *)          echo "Do not recognise ${os}." && exit 1 ;;
               esac
               filename="msquic_${platform}_Release_openssl.zip"
@@ -115,11 +115,11 @@ jobs:
                 wget --quiet ${url}
                 unzip ${filename} -d ${platform}
                 mkdir ${release}/${rid}
-                finalFilename=${release}/${rid}/${file}
+                finalFilename=${release}/${rid}/${ours}
                 mv ${platform}/bin/${file} ${finalFilename}
                 sudo chmod +r ${finalFilename}
                 rm -Rf ${platform} ${filename}
-                manifestRid="${manifestRid}${manifestRidComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${file}\" }"
+                manifestRid="${manifestRid}${manifestRidComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${ours}\" }"
                 manifestRidComma=",  "
               else
                 echo "   - This release has no files for ${rid}."
