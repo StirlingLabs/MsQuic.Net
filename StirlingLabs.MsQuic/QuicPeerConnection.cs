@@ -105,9 +105,9 @@ public abstract partial class QuicPeerConnection : IDisposable
 
     public bool ReceiveDatagramsAsync { get; set; }
 
-    public X509Certificate2 Certificate { get; protected set; } = null!;
+    public X509Certificate2? Certificate { get; protected set; } = null!;
 
-    public SignedCms CertificateChain { get; protected set; } = null!;
+    public SignedCms? CertificateChain { get; protected set; } = null!;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [SuppressMessage("Design", "CA1031", Justification = "Exception is handed off")]
@@ -649,39 +649,51 @@ public abstract partial class QuicPeerConnection : IDisposable
             case QUIC_CONNECTION_EVENT_TYPE.PEER_CERTIFICATE_RECEIVED: {
                 ref var typedEvent = ref @event.PEER_CERTIFICATE_RECEIVED;
 
-                var certBuf = (QUIC_BUFFER*)typedEvent.Certificate;
                 var chainBuf = (QUIC_BUFFER*)typedEvent.Chain;
 
-                var certSpan = certBuf->Span;
+                SignedCms? chainContainer = null;
+                if (chainBuf is not null)
+                {
+                    var chainSpan = chainBuf->Span;
 
-                var chainSpan = chainBuf->Span;
+                    chainContainer = new();
+                    chainContainer.Decode(chainSpan);
 
-                var chainContainer = new SignedCms();
-                chainContainer.Decode(chainSpan);
+                }
 
+                X509Certificate2? cert = null;
+
+                var certBuf = (QUIC_BUFFER*)typedEvent.Certificate;
+                if (certBuf is not null)
+                {
+                    var certSpan = certBuf->Span;
 #if NET5_0_OR_GREATER
-                var cert = new X509Certificate2(certSpan);
+                    cert = new(certSpan);
 #else
-                var certBytes = new byte[certSpan.Length];
-                certSpan.CopyTo(certBytes);
-                var cert = new X509Certificate2(certBytes);
+                    var certBytes = new byte[certSpan.Length];
+                    certSpan.CopyTo(certBytes);
+                    cert = new(certBytes);
 #endif
+                }
 
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
 
-#if TRACE_CERTIFICATES
+#if TRACE_CERTIFICATES || true
                 Trace.TraceInformation("===== BEGIN CERTIFICATE INFORMATION =====");
-                Trace.TraceInformation(cert.ToString(true));
+                Trace.TraceInformation(cert?.ToString(true) ?? "");
                 Trace.TraceInformation("===== END CERTIFICATE INFORMATION =====");
                 Trace.TraceInformation("===== BEGIN CERTIFICATE CHAIN INFORMATION =====");
                 {
-                    var i = 1;
-                    foreach (var c in chainContainer.Certificates)
+                    if (chainContainer is not null)
                     {
-                        Trace.TraceInformation($"===== BEGIN CERTIFICATE {i} INFORMATION =====");
-                        Trace.TraceInformation(c.ToString(true));
-                        Trace.TraceInformation($"===== END CERTIFICATE {i} INFORMATION =====");
-                        ++i;
+                        var i = 1;
+                        foreach (var c in chainContainer.Certificates)
+                        {
+                            Trace.TraceInformation($"===== BEGIN CERTIFICATE {i} INFORMATION =====");
+                            Trace.TraceInformation(c.ToString(true));
+                            Trace.TraceInformation($"===== END CERTIFICATE {i} INFORMATION =====");
+                            ++i;
+                        }
                     }
                 }
                 Trace.TraceInformation("===== END CERTIFICATE CHAIN INFORMATION =====");
@@ -714,8 +726,8 @@ public abstract partial class QuicPeerConnection : IDisposable
 
     public delegate int CertificateReceivedEventHandler(
         QuicPeerConnection peer,
-        X509Certificate2 certificate,
-        SignedCms chain,
+        X509Certificate2? certificate,
+        SignedCms? chain,
         uint deferredErrorFlags,
         int deferredStatus
     );
@@ -724,8 +736,8 @@ public abstract partial class QuicPeerConnection : IDisposable
     public event CertificateReceivedEventHandler? CertificateReceived;
 
     protected int OnCertificateReceived(
-        X509Certificate2 cert,
-        SignedCms chainContainer,
+        X509Certificate2? cert,
+        SignedCms? chainContainer,
         uint deferredErrorFlags,
         int deferredStatus
     )
@@ -766,7 +778,7 @@ public abstract partial class QuicPeerConnection : IDisposable
     protected internal virtual void OnUnobservedException(ExceptionDispatchInfo arg)
     {
         Debug.Assert(arg != null);
-        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg!.SourceException}");
+        Trace.TraceError($"{LogTimeStamp.ElapsedSeconds:F6} {this} {arg.SourceException}");
         UnobservedException?.Invoke(this, arg);
     }
 

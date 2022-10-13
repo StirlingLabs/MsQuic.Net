@@ -89,6 +89,18 @@ public class ReliableDatagramTests
             return QUIC_STATUS_SUCCESS;
         };
 
+        _listener.NewConnection += (_, connection) => {
+            output.WriteLine("handling _listener.NewConnection");
+            _serverSide = connection;
+            connection.CertificateReceived += (_, _, _, _, _)
+                => {
+                output.WriteLine("handled server CertificateReceived");
+                // TODO: cheap cert validation tests
+                return QUIC_STATUS_SUCCESS;
+            };
+            output.WriteLine("handled _listener.NewConnection");
+        };
+
         _listener.ClientConnected += (_, connection) => {
             serverConnected = true;
             _serverSide = connection;
