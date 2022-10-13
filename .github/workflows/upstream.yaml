@@ -17,6 +17,7 @@ jobs:
     name: Get Upstream Binaries
     runs-on: ubuntu-22.04
     outputs:
+      updates: ${{ steps.check.outputs.updates }}
       manifest: ${{ steps.download.outputs.manifest }}
       matrixVersion: ${{ steps.download.outputs.versionArray }}
       matrixRid: ${{ steps.download.outputs.ridArray }}
@@ -29,26 +30,27 @@ jobs:
         id: check
         env:
           upstream: 'microsoft/msquic'
-          canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64'
+          canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl'
         run: |
           latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest))
           packagesUrl="https://api.nuget.org/v3-flatcontainer/${canary}/index.json"
           packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
           echo "::set-output name=packagesUrl::${packagesUrl}"
           # Check if latestRelease is already a package
-          jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "$latestRelease" && exists="true" || exists="false"
+          jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${latestRelease:1}" && exists="true" || exists="false"
           if [[ "$exists" == "true" ]] ; then
-            echo "ok"
+            echo "No updates necessary"
+            echo "::set-output name=updates::false"
           else
             echo "Latest upstream release doesn't exist as NuPkg, we need to do some work."
             echo "::set-output name=releasesUrl::https://api.github.com/repos/${upstream}/releases"
             echo "::set-output name=tagsUrl::https://api.github.com/repos/${upstream}/tags"
+            echo "::set-output name=updates::true"
           fi
-          echo "::set-output name=exists::$exists"
           echo "::set-output name=gitUrl::git://github.com/${upstream}.git"
 
       - name: Filter Upsream Releases
-        if: steps.check.outputs.exists == 'false'
+        if: steps.check.outputs.updates == 'true'
         id: filter
         env:
           packagesUrl: ${{ steps.check.outputs.packagesUrl }}
@@ -76,7 +78,7 @@ jobs:
 
       - name: Get Data
         id: download
-        if: steps.check.outputs.exists == 'false'
+        if: steps.check.outputs.updates == 'true'
         env:
           releasesNeeded: ${{ steps.filter.outputs.releasesNeeded }}
           releasesUrl: ${{ steps.check.outputs.releasesUrl }}
@@ -153,15 +155,18 @@ jobs:
           echo "::set-output name=manifest::${manifest}"
 
       - name: Upload Libraries
+        if: steps.check.outputs.updates == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: Libraries
           path: "./*"
 
       - name: Get Source
+        if: steps.check.outputs.updates == 'true'
         uses: actions/checkout@v3
 
-      - name: Show Tree
+      - name: Identify Ancillaries
+        if: steps.check.outputs.updates == 'true'
         id: ancillary
         env:
           readme: StirlingLabs.MsQuic.Bindings/README.md
@@ -180,6 +185,7 @@ jobs:
           find .
 
       - name: Upload Ancillaries
+        if: steps.check.outputs.updates == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: Ancillaries
@@ -190,6 +196,7 @@ jobs:
   publish:
     name: Publish NuPkg
     needs: [ download ]
+    if: needs.download.outputs.updates == 'true'
     strategy:
       fail-fast: true
       max-parallel: 1
