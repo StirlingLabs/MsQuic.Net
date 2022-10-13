@@ -32,7 +32,7 @@ jobs:
           upstream: 'microsoft/msquic'
           canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl'
         run: |
-          latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest)).1
+          latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest))
           packagesUrl="https://api.nuget.org/v3-flatcontainer/${canary}/index.json"
           packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
           echo "::set-output name=packagesUrl::${packagesUrl}"
@@ -64,7 +64,7 @@ jobs:
           echo "..."
           echo "release list ${releaseList}"
           for release in ${releaseList[@]} ; do
-            jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${release}.1" && exists="true" || exists="false"
+            jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "$release" && exists="true" || exists="false"
             if [[ "$exists" != "true" ]] ; then
               major="${release%%.*}"
               if [ ${major:1} -ge 2 ] ; then
@@ -245,7 +245,7 @@ jobs:
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
           id: StirlingLabs.MsQuic.Bindings.runtime.${{ matrix.rid }}.openssl
-          version: ${{ steps.data.outputs.version }}.1
+          version: ${{ steps.data.outputs.version }}
           title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
           description: |
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
