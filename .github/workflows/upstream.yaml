@@ -57,6 +57,7 @@ jobs:
     if: needs.check.outputs.update == 'true'
     runs-on: ubuntu-22.04
     outputs:
+      continue: ${{ steps.download.outputs.continue }}
       manifest: ${{ steps.download.outputs.manifest }}
       matrixVersion: ${{ steps.download.outputs.versionArray }}
       matrixRid: ${{ steps.download.outputs.ridArray }}
@@ -102,6 +103,7 @@ jobs:
           manifestComma=""
           versionArray="[ "
           versionArrayComma=""
+          releasesReceived=0
           for release in ${releasesNeeded[@]} ; do
             echo "Processing $release"
             relJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $releasesJson)
@@ -144,39 +146,49 @@ jobs:
               manifest="${manifest}${manifestComma}{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $manifestRid ] }"
               manifestComma=", "
               echo "   - Found files for $ridExist RIDs."
+              releasesReceived=$((releasesReceived+1))
             else
               echo "   - This release has no files at all."
               rmdir ${release}
             fi
           done
-          versionArray="${versionArray} ]"
-          manifest="${manifest}]"
-          # Array of possible RIDs
-          ridArray="[ "
-          ridArrayComma=""
-          for rid in $rids ; do
-            ridArray="${ridArray}${ridArrayComma}\"${rid}\""
-            ridArrayComma=", "
-          done
-          ridArray="${ridArray} ]"
+          if [ $releasesReceived -gt 0 ] ; then
+            continue=true
+            versionArray="${versionArray} ]"
+            manifest="${manifest}]"
+            # Array of possible RIDs
+            ridArray="[ "
+            ridArrayComma=""
+            for rid in $rids ; do
+              ridArray="${ridArray}${ridArrayComma}\"${rid}\""
+              ridArrayComma=", "
+            done
+            ridArray="${ridArray} ]"
+          else
+            continue=false
+          fi
           #
           # Outputs
+          echo "continue=${continue}" >> $GITHUB_OUTPUT
           echo "versionArray=${versionArray}" >> $GITHUB_OUTPUT
           echo "ridArray=${ridArray}" >> $GITHUB_OUTPUT
           echo "manifest=${manifest}" >> $GITHUB_OUTPUT
 
       - name: Upload Libraries
+        if: steps.download.outputs.continue == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: Libraries
           path: "./*"
 
       - name: Get Source
+        if: steps.download.outputs.continue == 'true'
         uses: actions/checkout@v3
         with:
           submodules: true
 
       - name: Identify Ancillaries
+        if: steps.download.outputs.continue == 'true'
         id: ancillary
         env:
           readme: StirlingLabs.MsQuic.Bindings/README.md
@@ -195,6 +207,7 @@ jobs:
           find .
 
       - name: Upload Ancillaries
+        if: steps.download.outputs.continue == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: Ancillaries
@@ -205,7 +218,9 @@ jobs:
   nupkg:
     name: Publish NuPkg
     needs: [ check, binaries ]
-    if: needs.check.outputs.update == 'true'
+    if: |
+      needs.check.outputs.update == 'true' &&
+      needs.binaries.outputs.continue == 'true'
     strategy:
       fail-fast: true
       max-parallel: 1
