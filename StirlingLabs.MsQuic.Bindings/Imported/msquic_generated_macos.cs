@@ -1,3 +1,4 @@
+#nullable enable
 #pragma warning disable IDE0073
 //
 // Copyright (c) Microsoft Corporation.

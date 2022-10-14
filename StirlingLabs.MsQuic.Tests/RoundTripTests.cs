@@ -6,6 +6,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentAssertions;
 using StirlingLabs.MsQuic.Bindings;
 using NUnit.Framework;
 using StirlingLabs.Utilities;
@@ -92,15 +93,27 @@ public class RoundTripTests
 
         _clientSide.CertificateReceived += (_, _, _, _, _)
             => {
-            output.WriteLine("handled CertificateReceived");
+            output.WriteLine("handled client CertificateReceived");
             // TODO: cheap cert validation tests
             return QUIC_STATUS_SUCCESS;
+        };
+
+        _listener.NewConnection += (_, connection) => {
+            output.WriteLine("handling _listener.NewConnection");
+            _serverSide = connection;
+            connection.CertificateReceived += (_, _, _, _, _)
+                => {
+                output.WriteLine("handled server CertificateReceived");
+                // TODO: cheap cert validation tests
+                return QUIC_STATUS_SUCCESS;
+            };
+            output.WriteLine("handled _listener.NewConnection");
         };
 
         _listener.ClientConnected += (_, connection) => {
             output.WriteLine("handling _listener.ClientConnected");
             serverConnected = true;
-            _serverSide = connection;
+            _serverSide.Should().Be(connection);
             cde.Signal();
             output.WriteLine("handled _listener.ClientConnected");
         };

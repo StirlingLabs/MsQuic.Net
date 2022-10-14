@@ -15,6 +15,9 @@
         <DeterministicSourcePaths>true</DeterministicSourcePaths>
         <OutputType>Library</OutputType>
         <TargetFramework>net6.0</TargetFramework>
+
+        <RuntimeIdentifier>$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(RuntimeIdentifier)'==''">$([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)</RuntimeIdentifier>
     </PropertyGroup>
 
     <ItemGroup>
