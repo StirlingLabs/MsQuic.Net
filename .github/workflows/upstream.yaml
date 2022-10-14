@@ -74,10 +74,9 @@ jobs:
           releasesNeeded=""
           space=""
           releaseList=$(jq -r ".[].tag_name" <<< $releasesJson)
-          echo "..."
           echo "release list ${releaseList}"
           for release in ${releaseList[@]} ; do
-            jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "$release" && exists="true" || exists="false"
+            jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${release:1}" && exists="true" || exists="false"
             if [[ "$exists" != "true" ]] ; then
               major="${release%%.*}"
               if [ ${major:1} -ge 2 ] ; then
