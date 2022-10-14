@@ -1,4 +1,4 @@
-name: Upstream
+name: Follow Upstream
 
 on:
   push:
@@ -6,25 +6,26 @@ on:
   pull_request:
     branches: [ '**', '!gh-pages', '!coverage' ]
     types: [ opened, reopened, ready_for_review, synchronize ]
+  schedule:
+    - cron: '0 17 * * 0'
+  workflow_dispatch:
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  
-  download:
+  check:
     name: Get Upstream Binaries
     runs-on: ubuntu-22.04
     outputs:
-      updates: ${{ steps.check.outputs.updates }}
-      manifest: ${{ steps.download.outputs.manifest }}
-      matrixVersion: ${{ steps.download.outputs.versionArray }}
-      matrixRid: ${{ steps.download.outputs.ridArray }}
-      readme: ${{ steps.ancillary.outputs.readme }}
-      icon: ${{ steps.ancillary.outputs.icon }}
+      upstream: ${{ steps.check.outputs.upstream }}
+      update: ${{ steps.check.outputs.update }}
+      packagesUrl: ${{ steps.check.outputs.packagesUrl }}
+      releasesUrl: ${{ steps.check.outputs.releasesUrl }}
+      tagsUrl: ${{ steps.check.outputs.tagsUrl }}
+      latestRelease: ${{ steps.check.outputs.latestRelease }}
       gitUrl: ${{ steps.check.outputs.gitUrl }}
-      
     steps:
       - name: Check Upstream API
         id: check
@@ -32,29 +33,41 @@ jobs:
           upstream: 'microsoft/msquic'
           canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl'
         run: |
+          echo "::set-output name=upstream::${upstream}"
           latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest))
           packagesUrl="https://api.nuget.org/v3-flatcontainer/${canary}/index.json"
           packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
           echo "::set-output name=packagesUrl::${packagesUrl}"
           # Check if latestRelease is already a package
-          jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${latestRelease:1}" && exists="true" || exists="false"
-          if [[ "$exists" == "true" ]] ; then
-            echo "No updates necessary"
-            echo "::set-output name=updates::false"
+          jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${latestRelease:1}" && update="false" || update="true"
+          if [[ "$update" == "true" ]] ; then
+            echo "No update necessary"
           else
             echo "Latest upstream release doesn't exist as NuPkg, we need to do some work."
             echo "::set-output name=releasesUrl::https://api.github.com/repos/${upstream}/releases"
             echo "::set-output name=tagsUrl::https://api.github.com/repos/${upstream}/tags"
-            echo "::set-output name=updates::true"
           fi
+          echo "::set-output name=update::$update"
+          echo "::set-output name=latestRelease::${latestRelease}"
           echo "::set-output name=gitUrl::git://github.com/${upstream}.git"
 
+  binaries:
+    name: Get Upstream Binaries
+    needs: [ check ]
+    if: needs.check.outputs.update == 'true'
+    runs-on: ubuntu-22.04
+    outputs:
+      manifest: ${{ steps.download.outputs.manifest }}
+      matrixVersion: ${{ steps.download.outputs.versionArray }}
+      matrixRid: ${{ steps.download.outputs.ridArray }}
+      readme: ${{ steps.ancillary.outputs.readme }}
+      icon: ${{ steps.ancillary.outputs.icon }}
+    steps:
       - name: Filter Upsream Releases
-        if: steps.check.outputs.updates == 'true'
         id: filter
         env:
-          packagesUrl: ${{ steps.check.outputs.packagesUrl }}
-          releasesUrl: ${{ steps.check.outputs.releasesUrl }}
+          packagesUrl: ${{ needs.check.outputs.packagesUrl }}
+          releasesUrl: ${{ needs.check.outputs.releasesUrl }}
         run: |
           packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
           releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
@@ -76,13 +89,12 @@ jobs:
           echo "releases needed ${releasesNeeded}"
           echo "::set-output name=releasesNeeded::${releasesNeeded}"
 
-      - name: Get Data
+      - name: Get Libraries
         id: download
-        if: steps.check.outputs.updates == 'true'
         env:
           releasesNeeded: ${{ steps.filter.outputs.releasesNeeded }}
-          releasesUrl: ${{ steps.check.outputs.releasesUrl }}
-          tagsUrl: ${{ steps.check.outputs.tagsUrl }}
+          releasesUrl: ${{ needs.check.outputs.releasesUrl }}
+          tagsUrl: ${{ needs.check.outputs.tagsUrl }}
           rids: 'linux-x64 osx win-x64'
         run: |
           releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
@@ -155,18 +167,17 @@ jobs:
           echo "::set-output name=manifest::${manifest}"
 
       - name: Upload Libraries
-        if: steps.check.outputs.updates == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: Libraries
           path: "./*"
 
       - name: Get Source
-        if: steps.check.outputs.updates == 'true'
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Identify Ancillaries
-        if: steps.check.outputs.updates == 'true'
         id: ancillary
         env:
           readme: StirlingLabs.MsQuic.Bindings/README.md
@@ -185,7 +196,6 @@ jobs:
           find .
 
       - name: Upload Ancillaries
-        if: steps.check.outputs.updates == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: Ancillaries
@@ -193,16 +203,16 @@ jobs:
             ${{ steps.ancillary.outputs.readme }}
             ${{ steps.ancillary.outputs.icon }}
 
-  publish:
+  nupkg:
     name: Publish NuPkg
-    needs: [ download ]
-    if: needs.download.outputs.updates == 'true'
+    needs: [ check, binaries ]
+    if: needs.check.outputs.update == 'true'
     strategy:
       fail-fast: true
       max-parallel: 1
       matrix:
-        version: ${{ fromJson(needs.download.outputs.matrixVersion) }}
-        rid: ${{ fromJson(needs.download.outputs.matrixRid) }}
+        version: ${{ fromJson(needs.binaries.outputs.matrixVersion) }}
+        rid: ${{ fromJson(needs.binaries.outputs.matrixRid) }}
     runs-on: ubuntu-22.04
     steps:
       - name: Get Libraries
@@ -216,7 +226,7 @@ jobs:
         env: 
           version: ${{ matrix.version }}
           rid: ${{ matrix.rid }}
-          json: ${{ needs.download.outputs.manifest }}
+          json: ${{ needs.binaries.outputs.manifest }}
         run: |
           vJson=$(jq -r ".[] | select(.version==\"${version}\")" <<< $json)
           gitCommit=$(jq -r ".gitCommit" <<< $vJson)
@@ -251,9 +261,9 @@ jobs:
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
           fileSources: ${{ steps.libraries.outputs.download-path }}/${{ steps.data.outputs.location }}
           fileTargets: runtimes/${{ matrix.rid }}/native/${{ steps.data.outputs.filename }}
-          readme: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.readme }}
-          icon: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.download.outputs.icon }}
-          gitUrl: ${{ needs.download.outputs.gitUrl }}
+          readme: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.binaries.outputs.readme }}
+          icon: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.binaries.outputs.icon }}
+          gitUrl: ${{ needs.check.outputs.gitUrl }}
           gitBranch: ${{ steps.data.outputs.gitBranch }}
           gitCommit: ${{ steps.data.outputs.gitCommit }}
 
@@ -270,3 +280,89 @@ jobs:
           url: "https://api.nuget.org/v3/index.json"
         run: |
           dotnet nuget push *.nupkg -k $key -s $url --no-symbols --skip-duplicate
+
+  code:
+    name: Get Upstream Code
+    needs: [ check, nupkg ]
+    if: needs.check.outputs.update == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Get Latest Code Archive
+        id: retrieve
+        env:
+          upstream: ${{ needs.check.outputs.upstream }}
+          version: ${{ needs.check.outputs.latestRelease }}
+          import: 'src/cs/lib'
+        run: |
+          $base="upstream"
+          url="https://github.com/${upstream}/archive/refs/tags/${version}.zip"
+          wget --quiet ${url}
+          unzip ${version}.zip -d $base
+          codebase="${base}/$(basename ${base}/*)"
+          echo "::set-output name=base::${base}"
+          echo "::set-output name=codebase::${codebase}"
+          echo "::set-output name=folder::${folder}"
+
+      - name: Edit Upstream Files
+        id: edit
+        env:
+          base: ${{ steps.retrieve.outputs.base }}
+          source: ${{ steps.retrieve.outputs.codebase }}/${{ steps.retrieve.outputs.folder }}
+          result: 'edited-upstream'
+        run: |
+          ls -la $source
+          mkdir $result
+          for entry in ${source}/*.cs ; do 
+            if [[ "$entry" != *"InternalsVisible.cs" ]] ; then
+              sed -i '1i \#nullable enable' "$entry"
+              sed -i 's/\(^\s*\) \(\binternal\b\)/\1 public/' "$entry"
+              sed -i 's/\bMicrosoft\.Quic\b/StirlingLabs.MsQuic.Bindings/' "$entry"
+              sed -i 's/\(^.*DllImport.\{1,3\}\"msquic\)\(\"\)/\1-openssl\2/' "$entry"
+              echo "Edited $entry"
+              mv "$entry" ${result}/
+            fi
+          done
+          rm -Rf "$base"
+          ls -la $result
+          echo "::set-output name=result::${result}"
+
+      - name: Get Our Source
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Replace Existing Files
+        id: replace
+        env:
+          source: ${{ steps.edit.outputs.result }}
+          target: ${{ steps.retrieve.outputs.folder }}
+          version: 
+        run: |
+          ls -la $target
+          mv -f ${source}/* ${target}
+          rmdir $source
+          ls -la $target
+
+      - name: Edit Our Files
+        id: update
+        env:
+          source: ${{ steps.retrieve.outputs.codebase }}/${{ steps.retrieve.outputs.folder }}
+          version: ${{ needs.check.outputs.latestRelease }}
+        run: |
+          for entry in $(find . -name *.csproj) ; do 
+            sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version}\4/" "$entry"
+            echo "Edited $entry"
+          done
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.DEMON_HOOKS }}
+          commit-message: Update to incorporate upstream changes in {{ needs.check.outputs.latestRelease }}
+          branch: upstream/${{ needs.check.outputs.latestRelease }}
+          delete-branch: true
+          title: Update to ${{ needs.check.outputs.upstream }} ${{ needs.check.outputs.latestRelease }}
+          body: |
+            Automatically prepared the following changes:
+            - Re-imported upstream files and re-applied our modifications
+            - Updated projects to refer to new upstream libraries
