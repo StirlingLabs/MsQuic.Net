@@ -16,7 +16,7 @@ defaults:
 
 jobs:
   check:
-    name: Get Upstream Binaries
+    name: Check Upstream Status
     runs-on: ubuntu-22.04
     outputs:
       upstream: ${{ steps.check.outputs.upstream }}
@@ -27,29 +27,29 @@ jobs:
       latestRelease: ${{ steps.check.outputs.latestRelease }}
       gitUrl: ${{ steps.check.outputs.gitUrl }}
     steps:
-      - name: Check Upstream API
+      - name: Check API
         id: check
         env:
           upstream: 'microsoft/msquic'
           canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl'
         run: |
-          echo "::set-output name=upstream::${upstream}"
           latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest))
           packagesUrl="https://api.nuget.org/v3-flatcontainer/${canary}/index.json"
           packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
-          echo "::set-output name=packagesUrl::${packagesUrl}"
           # Check if latestRelease is already a package
           jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${latestRelease:1}" && update="false" || update="true"
-          if [[ "$update" == "true" ]] ; then
+          if [[ "$update" == "false" ]] ; then
             echo "No update necessary"
           else
             echo "Latest upstream release doesn't exist as NuPkg, we need to do some work."
-            echo "::set-output name=releasesUrl::https://api.github.com/repos/${upstream}/releases"
-            echo "::set-output name=tagsUrl::https://api.github.com/repos/${upstream}/tags"
           fi
-          echo "::set-output name=update::$update"
-          echo "::set-output name=latestRelease::${latestRelease}"
-          echo "::set-output name=gitUrl::git://github.com/${upstream}.git"
+          echo "upstream=${upstream}" >> $GITHUB_OUTPUT
+          echo "packagesUrl=${packagesUrl}" >> $GITHUB_OUTPUT
+          echo "releasesUrl=https://api.github.com/repos/${upstream}/releases" >> $GITHUB_OUTPUT
+          echo "tagsUrl=https://api.github.com/repos/${upstream}/tags" >> $GITHUB_OUTPUT
+          echo "update=$update" >> $GITHUB_OUTPUT
+          echo "latestRelease=${latestRelease}" >> $GITHUB_OUTPUT
+          echo "gitUrl=git://github.com/${upstream}.git" >> $GITHUB_OUTPUT
 
   binaries:
     name: Get Upstream Binaries
@@ -87,7 +87,7 @@ jobs:
             fi
           done
           echo "releases needed ${releasesNeeded}"
-          echo "::set-output name=releasesNeeded::${releasesNeeded}"
+          echo "releasesNeeded=${releasesNeeded}" >> $GITHUB_OUTPUT
 
       - name: Get Libraries
         id: download
@@ -162,9 +162,9 @@ jobs:
           ridArray="${ridArray} ]"
           #
           # Outputs
-          echo "::set-output name=versionArray::${versionArray}"
-          echo "::set-output name=ridArray::${ridArray}"
-          echo "::set-output name=manifest::${manifest}"
+          echo "versionArray=${versionArray}" >> $GITHUB_OUTPUT
+          echo "ridArray=${ridArray}" >> $GITHUB_OUTPUT
+          echo "manifest=${manifest}" >> $GITHUB_OUTPUT
 
       - name: Upload Libraries
         uses: actions/upload-artifact@v3
@@ -184,12 +184,12 @@ jobs:
           icon: SL.png
         run: |
           if [[ -s "${readme}" ]] ; then
-            echo "::set-output name=readme::${readme}"
+            echo "readme=${readme}" >> $GITHUB_OUTPUT
           else
             echo "README Not found at ${readme}"
           fi
           if [[ -s "${icon}" ]] ; then
-            echo "::set-output name=icon::${icon}"
+            echo "icon=${icon}" >> $GITHUB_OUTPUT
           else
             echo "README Not found at ${icon}"
           fi
@@ -234,11 +234,11 @@ jobs:
           location=$(jq -r ".platforms[] | select(.rid==\"${rid}\") | .location" <<< $vJson)
           filename=$(jq -r ".platforms[] | select(.rid==\"${rid}\") | .filename" <<< $vJson)
           echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
-          echo "::set-output name=gitCommit::${gitCommit}"
-          echo "::set-output name=gitBranch::${gitBranch}"
-          echo "::set-output name=location::${location}"
-          echo "::set-output name=filename::${filename}"
-          echo "::set-output name=version::${version:1}" # remove the v
+          echo "gitCommit=${gitCommit}" >> $GITHUB_OUTPUT
+          echo "gitBranch=${gitBranch}" >> $GITHUB_OUTPUT
+          echo "location=${location}" >> $GITHUB_OUTPUT
+          echo "filename=${filename}" >> $GITHUB_OUTPUT
+          echo "ersion=${version:1}" >> $GITHUB_OUTPUT # remove the v
 
       - name: Get Ancillaries
         id: ancillaries
@@ -255,7 +255,7 @@ jobs:
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
           id: StirlingLabs.MsQuic.Bindings.runtime.${{ matrix.rid }}.openssl
-          version: ${{ steps.data.outputs.version }}
+          version: ${{ steps.data.outputs.ersion }}
           title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
           description: |
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
@@ -299,9 +299,9 @@ jobs:
           wget --quiet ${url}
           unzip ${version}.zip -d $base
           codebase="${base}/$(basename ${base}/*)"
-          echo "::set-output name=base::${base}"
-          echo "::set-output name=codebase::${codebase}"
-          echo "::set-output name=folder::${folder}"
+          echo "base=${base}" >> $GITHUB_OUTPUT
+          echo "codebase=${codebase}" >> $GITHUB_OUTPUT
+          echo "folder=${folder}" >> $GITHUB_OUTPUT
 
       - name: Edit Upstream Files
         id: edit
@@ -324,7 +324,7 @@ jobs:
           done
           rm -Rf "$base"
           ls -la $result
-          echo "::set-output name=result::${result}"
+          echo "result=${result}" >> $GITHUB_OUTPUT
 
       - name: Get Our Source
         uses: actions/checkout@v3
@@ -343,7 +343,7 @@ jobs:
           rmdir $source
           ls -la $target
 
-      - name: Edit Our Files
+      - name: Update Our Files
         id: update
         env:
           source: ${{ steps.retrieve.outputs.codebase }}/${{ steps.retrieve.outputs.folder }}
