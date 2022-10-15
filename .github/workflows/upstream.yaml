@@ -253,6 +253,7 @@ jobs:
           echo "location=${location}" >> $GITHUB_OUTPUT
           echo "filename=${filename}" >> $GITHUB_OUTPUT
           echo "ersion=${version:1}" >> $GITHUB_OUTPUT # remove the v
+          echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> $GITHUB_OUTPUT
 
       - name: Get Ancillaries
         id: ancillaries
@@ -268,7 +269,7 @@ jobs:
         id: nuspec
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
-          id: StirlingLabs.MsQuic.Bindings.runtime.${{ matrix.rid }}.openssl
+          id: ${{ steps.data.outputs.packageName }}
           version: ${{ steps.data.outputs.ersion }}
           title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
           description: |
@@ -294,6 +295,14 @@ jobs:
           url: "https://api.nuget.org/v3/index.json"
         run: |
           dotnet nuget push *.nupkg -k $key -s $url --no-symbols --skip-duplicate
+
+      - name: Summary
+        id: summary
+        env:
+          id: ${{ steps.data.outputs.packageName }}
+          version: ${{ matrix.version }}
+        run: |
+          echo "### Uploaded NuPkg for [${id}](https://www.nuget.org/packages/${id}) ${version}." >> $GITHUB_STEP_SUMMARY
 
   code:
     name: Get Upstream Code
@@ -380,3 +389,10 @@ jobs:
             Automatically prepared the following changes:
             - Re-imported upstream files and re-applied our modifications
             - Updated projects to refer to new upstream libraries
+
+      - name: Summary
+        id: summary
+        env:
+          version: ${{ needs.check.outputs.latestRelease }}
+        run: |
+          echo "### Created PR for update to ${version}." >> $GITHUB_STEP_SUMMARY
