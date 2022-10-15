@@ -1,0 +1,22 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build
+    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@main
+    with:
+      release: true
+  
+  release:
+    name: Release
+    needs: [ linux, macos, windows ]
+    uses: StirlingLabs/Actions/.github/workflows/dotnetRelease.yaml@main
+    with:
+      nuget: true
+      githubToken: ${{github.token}}
+      nugetToken: ${{secrets.NUGET_STIRLINGLABS_API_KEY}}
