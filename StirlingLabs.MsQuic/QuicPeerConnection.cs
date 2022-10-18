@@ -787,7 +787,7 @@ public abstract partial class QuicPeerConnection : IDisposable
 
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
-    public event EventHandler<QuicPeerConnection, bool, bool>? ConnectionShutdown;
+    public event EventHandler<QuicPeerConnection, ulong, bool, bool>? ConnectionShutdown;
 
     private unsafe void OnShutdown(
         ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_TRANSPORT_e__Struct typedEvent)
