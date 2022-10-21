@@ -678,7 +678,7 @@ public abstract partial class QuicPeerConnection : IDisposable
 
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type}");
 
-#if TRACE_CERTIFICATES || true
+#if TRACE_CERTIFICATES
                 Trace.TraceInformation("===== BEGIN CERTIFICATE INFORMATION =====");
                 Trace.TraceInformation(cert?.ToString(true) ?? "");
                 Trace.TraceInformation("===== END CERTIFICATE INFORMATION =====");
