@@ -317,7 +317,7 @@ jobs:
           version: ${{ needs.check.outputs.latestRelease }}
           import: 'src/cs/lib'
         run: |
-          $base="upstream"
+          base="$upstream"
           url="https://github.com/${upstream}/archive/refs/tags/${version}.zip"
           wget --quiet ${url}
           unzip ${version}.zip -d $base
