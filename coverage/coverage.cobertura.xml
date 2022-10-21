@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.18780000000000002" branch-rate="0.0368" version="1.9" timestamp="1666381977" lines-covered="71" lines-valid="378" branches-covered="12" branches-valid="326">
+<coverage line-rate="0.19039999999999999" branch-rate="0.0368" version="1.9" timestamp="1666382511" lines-covered="72" lines-valid="378" branches-covered="12" branches-valid="326">
   <sources />
   <packages>
-    <package name="StirlingLabs.MsQuic.Bindings" line-rate="0.18780000000000002" branch-rate="0.0368" complexity="518">
+    <package name="StirlingLabs.MsQuic.Bindings" line-rate="0.19039999999999999" branch-rate="0.0368" complexity="518">
       <classes>
         <class name="StirlingLabs.MsQuic.Bindings.QUIC_BUFFER" filename="/home/runner/work/MsQuic.Net/MsQuic.Net/StirlingLabs.MsQuic.Bindings/Compatibility/QUIC_BUFFER.cs" line-rate="0.11109999999999999" branch-rate="0" complexity="9">
           <methods>
@@ -2404,21 +2404,21 @@
             <line number="1855" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="StirlingLabs.MsQuic.Bindings.QUIC_CONNECTION_EVENT" filename="/home/runner/work/MsQuic.Net/MsQuic.Net/StirlingLabs.MsQuic.Bindings/Imported/msquic_generated.cs" line-rate="0.7333" branch-rate="1" complexity="15">
+        <class name="StirlingLabs.MsQuic.Bindings.QUIC_CONNECTION_EVENT" filename="/home/runner/work/MsQuic.Net/MsQuic.Net/StirlingLabs.MsQuic.Bindings/Imported/msquic_generated.cs" line-rate="0.8" branch-rate="1" complexity="15">
           <methods>
             <method name="get_CONNECTED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
                 <line number="1892" hits="20" branch="False" />
               </lines>
             </method>
-            <method name="get_SHUTDOWN_INITIATED_BY_TRANSPORT" signature="()" line-rate="0" branch-rate="1" complexity="1">
+            <method name="get_SHUTDOWN_INITIATED_BY_TRANSPORT" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1900" hits="0" branch="False" />
+                <line number="1900" hits="1" branch="False" />
               </lines>
             </method>
             <method name="get_SHUTDOWN_INITIATED_BY_PEER" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1908" hits="3" branch="False" />
+                <line number="1908" hits="2" branch="False" />
               </lines>
             </method>
             <method name="get_SHUTDOWN_COMPLETE" signature="()" line-rate="0" branch-rate="1" complexity="1">
@@ -2448,12 +2448,12 @@
             </method>
             <method name="get_IDEAL_PROCESSOR_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1956" hits="16" branch="False" />
+                <line number="1956" hits="14" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_STATE_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1964" hits="52" branch="False" />
+                <line number="1964" hits="54" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -2484,15 +2484,15 @@
           </methods>
           <lines>
             <line number="1892" hits="20" branch="False" />
-            <line number="1900" hits="0" branch="False" />
-            <line number="1908" hits="3" branch="False" />
+            <line number="1900" hits="1" branch="False" />
+            <line number="1908" hits="2" branch="False" />
             <line number="1916" hits="0" branch="False" />
             <line number="1924" hits="0" branch="False" />
             <line number="1932" hits="0" branch="False" />
             <line number="1940" hits="9" branch="False" />
             <line number="1948" hits="11" branch="False" />
-            <line number="1956" hits="16" branch="False" />
-            <line number="1964" hits="52" branch="False" />
+            <line number="1956" hits="14" branch="False" />
+            <line number="1964" hits="54" branch="False" />
             <line number="1972" hits="4" branch="False" />
             <line number="1980" hits="8" branch="False" />
             <line number="1988" hits="1" branch="False" />
