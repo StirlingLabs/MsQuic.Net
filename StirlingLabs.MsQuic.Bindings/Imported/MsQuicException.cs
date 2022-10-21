@@ -1,5 +1,5 @@
-﻿#nullable enable
-#pragma warning disable IDE0073
+#nullable enable
+﻿#pragma warning disable IDE0073
 //
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
