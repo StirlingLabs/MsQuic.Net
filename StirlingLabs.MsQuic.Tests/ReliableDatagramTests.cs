@@ -238,7 +238,11 @@ public class ReliableDatagramTests
             .ContinueWith((t, o) => {
                 TestContext.Out.WriteLine("datagram sent");
                 if (!t.IsCompletedSuccessfully)
+                {
+                    TestContext.Out.WriteLine($"datagram sent unsuccessful, status: {t.Status}");
                     Assert.Fail(t.Status.ToString());
+                    return;
+                }
                 dgSent = true;
                 ((CountdownEvent)o!).Signal();
                 TestContext.Out.WriteLine("handled datagram sent");
@@ -249,7 +253,11 @@ public class ReliableDatagramTests
             .ContinueWith((t, o) => {
                 TestContext.Out.WriteLine("datagram acknowledgement arrived");
                 if (!t.IsCompletedSuccessfully)
+                {
+                    TestContext.Out.WriteLine($"datagram acknowledgement unsuccessful, status: {t.Status}");
                     Assert.Fail(t.Status.ToString());
+                    return;
+                }
                 dgAcknowledged = true;
                 ((CountdownEvent)o!).Signal();
                 TestContext.Out.WriteLine("handled datagram acknowledgement");
