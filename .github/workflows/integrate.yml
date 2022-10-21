@@ -1,0 +1,23 @@
+name: Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ '**', '!gh-pages', '!coverage' ]
+    types: [ opened, reopened, ready_for_review, synchronize ]
+
+jobs:
+  
+  threshold:
+    name: Check Status
+    uses: StirlingLabs/Actions/.github/workflows/threshold.yaml@main
+
+  build:
+    name: Build
+    needs: threshold
+    if: |
+      needs.threshold.outputs.continue == 'true' && 
+      needs.threshold.outputs.release != 'true'
+    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@main
+  
