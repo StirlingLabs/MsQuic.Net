@@ -6,11 +6,15 @@
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/StirlingLabs/MsQuic.Net.git</RepositoryUrl>
         <PackageProjectUrl>https://github.com/StirlingLabs/MsQuic.Net</PackageProjectUrl>
+        <description>
+          .NET wrapper around MsQuic, a cross-platform C implementation of the IETF QUIC protocol.
+        </description>       
         <GitDefaultBranch>main</GitDefaultBranch>
         <GitCommitsIgnoreMerges>true</GitCommitsIgnoreMerges>
         <VersionNetDebugImportance>high</VersionNetDebugImportance>
         <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
         <PackageIcon>SL.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <ImportGroup>
         <Import Project="StirlingLabs.Version/Version.proj" />
@@ -18,5 +22,6 @@
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" Visible="false"/>
         <None Include="$(MSBuildThisFileDirectory)SL.png" Pack="true" PackagePath="SL.png" Visible="false"/>
+        <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="README.md" Visible="false"/>
     </ItemGroup>
 </Project>
