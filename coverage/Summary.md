@@ -1,8 +1,8 @@
 ﻿# Summary
 |||
 |:---|:---|
-| Generated on: | 10/21/2022 - 20:08:30 |
-| Coverage date: | 10/21/2022 - 20:08:28 |
+| Generated on: | 10/21/2022 - 20:24:14 |
+| Coverage date: | 10/21/2022 - 20:24:14 |
 | Parser: | Cobertura |
 | Assemblies: | 1 |
 | Classes: | 15 |
