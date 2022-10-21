@@ -233,32 +233,43 @@ public class ReliableDatagramTests
         var dgAcknowledged = false;
         var dgReceived = false;
 
+        TestContext.Out.WriteLine("configured async wait for datagram sent");
         dg.WaitForSentAsync()
             .ContinueWith((t, o) => {
+                TestContext.Out.WriteLine("datagram sent");
                 if (!t.IsCompletedSuccessfully)
                     Assert.Fail(t.Status.ToString());
                 dgSent = true;
                 ((CountdownEvent)o!).Signal();
+                TestContext.Out.WriteLine("handled datagram sent");
             }, cde, TaskScheduler.Default);
 
+        TestContext.Out.WriteLine("configured async wait for datagram acknowledgement");
         dg.WaitForAcknowledgementAsync()
             .ContinueWith((t, o) => {
+                TestContext.Out.WriteLine("datagram acknowledgement arrived");
                 if (!t.IsCompletedSuccessfully)
                     Assert.Fail(t.Status.ToString());
                 dgAcknowledged = true;
                 ((CountdownEvent)o!).Signal();
+                TestContext.Out.WriteLine("handled datagram acknowledgement");
             }, cde, TaskScheduler.Default);
 
         _serverSide.DatagramReceived += (_, bytes) => {
+            TestContext.Out.WriteLine("DatagramReceived event");
             dgReceived = true;
             BigSpanAssert.AreEqual<byte>(utf8Hello.Span, bytes);
             cde.Signal();
+            TestContext.Out.WriteLine("handled server DatagramReceived");
         };
 
+        TestContext.Out.WriteLine("sending datagram");
         _clientSide.SendDatagram(dg);
 
+        TestContext.Out.WriteLine("waiting on async events");
         cde.Wait();
 
+        TestContext.Out.WriteLine("waiting finished");
         Assert.True(dgSent);
         Assert.True(dgAcknowledged);
         Assert.True(dgReceived);
