@@ -386,3 +386,7 @@ FodyWeavers.xsd
 /coverage
 
 .DS_Store
+
+# Continuous Integration uses these files
+microsoft/msquic/*
+upstream.zip

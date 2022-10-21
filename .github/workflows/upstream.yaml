@@ -310,31 +310,38 @@ jobs:
     if: needs.check.outputs.update == 'true'
     runs-on: ubuntu-22.04
     steps:
+      - name: Get Our Source
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
       - name: Get Latest Code Archive
         id: retrieve
         env:
           upstream: ${{ needs.check.outputs.upstream }}
           version: ${{ needs.check.outputs.latestRelease }}
           import: 'src/cs/lib'
+          target: 'StirlingLabs.MsQuic.Bindings'
         run: |
           base="$upstream"
           url="https://github.com/${upstream}/archive/refs/tags/${version}.zip"
-          wget --quiet ${url}
-          unzip ${version}.zip -d $base
+          wget --quiet ${url} -O upstream.zip
+          mkdir -p $base
+          unzip upstream.zip -d $base
+          rm -f upstream.zip
           codebase="${base}/$(basename ${base}/*)"
           echo "base=${base}" >> $GITHUB_OUTPUT
-          echo "codebase=${codebase}" >> $GITHUB_OUTPUT
-          echo "folder=${folder}" >> $GITHUB_OUTPUT
+          echo "source=${codebase}/${import}" >> $GITHUB_OUTPUT
+          echo "target=${target}" >> $GITHUB_OUTPUT
 
       - name: Edit Upstream Files
         id: edit
         env:
           base: ${{ steps.retrieve.outputs.base }}
-          source: ${{ steps.retrieve.outputs.codebase }}/${{ steps.retrieve.outputs.folder }}
-          result: 'edited-upstream'
+          source: ${{ steps.retrieve.outputs.source }}
+          target: ${{ steps.retrieve.outputs.target }}/Imported
         run: |
           ls -la $source
-          mkdir $result
           for entry in ${source}/*.cs ; do 
             if [[ "$entry" != *"InternalsVisible.cs" ]] ; then
               sed -i '1i \#nullable enable' "$entry"
@@ -342,47 +349,28 @@ jobs:
               sed -i 's/\bMicrosoft\.Quic\b/StirlingLabs.MsQuic.Bindings/' "$entry"
               sed -i 's/\(^.*DllImport.\{1,3\}\"msquic\)\(\"\)/\1-openssl\2/' "$entry"
               echo "Edited $entry"
-              mv "$entry" ${result}/
+              mv -f "$entry" ${target}/
             fi
           done
           rm -Rf "$base"
-          ls -la $result
-          echo "result=${result}" >> $GITHUB_OUTPUT
-
-      - name: Get Our Source
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Replace Existing Files
-        id: replace
-        env:
-          source: ${{ steps.edit.outputs.result }}
-          target: ${{ steps.retrieve.outputs.folder }}
-          version: 
-        run: |
-          ls -la $target
-          mv -f ${source}/* ${target}
-          rmdir $source
           ls -la $target
 
       - name: Update Our Files
         id: update
         env:
-          source: ${{ steps.retrieve.outputs.codebase }}/${{ steps.retrieve.outputs.folder }}
+          target: ${{ steps.retrieve.outputs.target }}
           version: ${{ needs.check.outputs.latestRelease }}
         run: |
-          for entry in $(find . -name *.csproj) ; do 
-            sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version}\4/" "$entry"
-            echo "Edited $entry"
-          done
+          file="${target}/${target}.csproj"
+          sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version:1}\4/" "$file"
+          echo "Edited $file"
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.DEMON_HOOKS }}
           commit-message: Update to incorporate upstream changes in {{ needs.check.outputs.latestRelease }}
-          branch: upstream/${{ needs.check.outputs.latestRelease }}
+          base: main
+          branch: upstream-${{ needs.check.outputs.latestRelease }}
           delete-branch: true
           title: Update to ${{ needs.check.outputs.upstream }} ${{ needs.check.outputs.latestRelease }}
           body: |
