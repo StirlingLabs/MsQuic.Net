@@ -36,7 +36,6 @@
         <PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.1" />
         <PackageReference Include="ZString" Version="2.4.4" />
-        <PackageReference Update="StirlingLabs.sockaddr.Net.runtime.osx.libsa" Version="22.9.0" />
     </ItemGroup>
 
     <ItemGroup>
