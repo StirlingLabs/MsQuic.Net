@@ -240,6 +240,8 @@ public class ReliableDatagramTests
                 if (!t.IsCompletedSuccessfully)
                 {
                     TestContext.Out.WriteLine($"datagram sent unsuccessful, status: {t.Status}");
+                    if (t.Exception is not null)
+                        TestContext.Out.WriteLine(t.Exception.ToString());
                     Assert.Fail(t.Status.ToString());
                     return;
                 }
@@ -255,6 +257,8 @@ public class ReliableDatagramTests
                 if (!t.IsCompletedSuccessfully)
                 {
                     TestContext.Out.WriteLine($"datagram acknowledgement unsuccessful, status: {t.Status}");
+                    if (t.Exception is not null)
+                        TestContext.Out.WriteLine(t.Exception.ToString());
                     Assert.Fail(t.Status.ToString());
                     return;
                 }
