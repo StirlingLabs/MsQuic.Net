@@ -26,6 +26,7 @@ public interface IQuicReadOnlyDatagram : IDisposable
     bool IsLost { get; }
 
     bool IsDiscarded { get; }
+    bool IsReliable { get; }
 
     unsafe QUIC_BUFFER* GetBuffer();
 

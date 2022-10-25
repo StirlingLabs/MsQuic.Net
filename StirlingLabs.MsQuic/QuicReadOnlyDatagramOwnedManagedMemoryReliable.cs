@@ -9,6 +9,7 @@ namespace StirlingLabs.MsQuic;
 [PublicAPI]
 public sealed class QuicReadOnlyDatagramOwnedManagedMemoryReliable : QuicReadOnlyDatagram
 {
+    public override bool IsReliable => true;
     public IMemoryOwner<byte> MemoryOwner { get; }
     public ReadOnlyMemory<byte> Memory { get; }
 

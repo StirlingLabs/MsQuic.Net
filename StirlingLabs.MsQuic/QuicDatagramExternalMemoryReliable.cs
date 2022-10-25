@@ -8,6 +8,8 @@ namespace StirlingLabs.MsQuic;
 [PublicAPI]
 public sealed class QuicDatagramExternalMemoryReliable : QuicDatagramReliable
 {
+    public override bool IsReliable => true;
+    
     private unsafe byte* _externalMemStart;
     private uint _externalMemLength;
     private readonly Action<IntPtr> _externalMemFree;

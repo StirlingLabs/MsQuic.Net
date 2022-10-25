@@ -9,6 +9,8 @@ namespace StirlingLabs.MsQuic;
 [PublicAPI]
 public sealed class QuicDatagramManagedMemoryReliable : QuicDatagramReliable
 {
+    public override bool IsReliable => true;
+
     public Memory<byte> Memory { get; }
 
     public MemoryHandle MemoryHandle { get; }
@@ -53,6 +55,7 @@ public sealed class QuicDatagramManagedMemoryReliable : QuicDatagramReliable
 [PublicAPI]
 public sealed class QuicReadOnlyDatagramManagedMemoryReliable : QuicReadOnlyDatagramReliable
 {
+    public override bool IsReliable => true;
     public ReadOnlyMemory<byte> Memory { get; }
 
     public MemoryHandle MemoryHandle { get; }

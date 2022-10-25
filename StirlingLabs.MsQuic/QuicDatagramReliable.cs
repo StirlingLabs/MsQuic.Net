@@ -9,6 +9,8 @@ namespace StirlingLabs.MsQuic;
 [PublicAPI]
 public abstract class QuicDatagramReliable : QuicDatagram, IQuicDatagramReliable
 {
+    public override bool IsReliable => true;
+
     protected QuicDatagramReliable(QuicPeerConnection connection, QUIC_DATAGRAM_SEND_STATE state)
         : base(connection, state)
         => Id = connection.GenerateReliableId();

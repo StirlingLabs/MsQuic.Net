@@ -20,6 +20,7 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
     private QUIC_DATAGRAM_SEND_STATE _state;
     private TaskCompletionSource<bool> _tcsSent = new();
     private TaskCompletionSource<bool> _tcsAcknowledged = new();
+    public virtual bool IsReliable => false;
     protected QuicReadOnlyDatagram(QuicPeerConnection connection, QUIC_DATAGRAM_SEND_STATE state)
     {
         GcHandle = GCHandle.Alloc(this);
@@ -49,8 +50,11 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
                     _tcsAcknowledged.TrySetResult(true);
                     break;
                 case QUIC_DATAGRAM_SEND_STATE.LOST_SUSPECT:
-                    IsLost = true;
-                    _tcsAcknowledged.TrySetException(new TimeoutException("Datagram suspected lost."));
+                    if (!IsReliable)
+                    {
+                        IsLost = true;
+                        _tcsAcknowledged.TrySetException(new TimeoutException("Datagram suspected lost."));
+                    }
                     break;
                 case QUIC_DATAGRAM_SEND_STATE.LOST_DISCARDED:
                     IsLost = true;
@@ -167,6 +171,18 @@ public abstract class QuicReadOnlyDatagram : IQuicReadOnlyDatagram
     public Task WaitForSentAsync() => _tcsSent.Task;
 
     public Task WaitForAcknowledgementAsync() => _tcsAcknowledged.Task;
+    
+    public Task WaitForSentAsync(TimeSpan timeout)
+        => Task.WhenAny(Task.Delay(timeout), WaitForSentAsync());
+
+    public Task WaitForAcknowledgementAsync(TimeSpan timeout)
+        => Task.WhenAny(Task.Delay(timeout), WaitForAcknowledgementAsync());
+    
+    public Task WaitForSentAsync(int millisecondTimeout)
+        => Task.WhenAny(Task.Delay(millisecondTimeout), WaitForSentAsync());
+
+    public Task WaitForAcknowledgementAsync(int millisecondTimeout)
+        => Task.WhenAny(Task.Delay(millisecondTimeout), WaitForAcknowledgementAsync());
 
     public bool Send()
     {

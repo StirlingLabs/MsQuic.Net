@@ -380,45 +380,68 @@ public class RoundTripTests
 
 
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public void RoundTripDatagram2Test()
     {
         // datagram round trip
         Memory<byte> utf8Hello = Encoding.UTF8.GetBytes("Hello");
 
-        using var dg = new QuicDatagramManagedMemory(_clientSide, utf8Hello);
+        using var dg = QuicDatagram.Create(_clientSide, utf8Hello);
 
         using var cde = new CountdownEvent(3);
         var dgSent = false;
         var dgAcknowledged = false;
         var dgReceived = false;
 
+        TestContext.Out.WriteLine("configured async wait for datagram sent");
         dg.WaitForSentAsync()
             .ContinueWith((t, o) => {
+                TestContext.Out.WriteLine("datagram sent");
                 if (!t.IsCompletedSuccessfully)
+                {
+                    TestContext.Out.WriteLine($"datagram sent unsuccessful, status: {t.Status}");
+                    if (t.Exception is not null)
+                        TestContext.Out.WriteLine(t.Exception.ToString());
                     Assert.Fail(t.Status.ToString());
+                    return;
+                }
                 dgSent = true;
                 ((CountdownEvent)o!).Signal();
+                TestContext.Out.WriteLine("handled datagram sent");
             }, cde, TaskScheduler.Default);
 
+        TestContext.Out.WriteLine("configured async wait for datagram acknowledgement");
         dg.WaitForAcknowledgementAsync()
             .ContinueWith((t, o) => {
+                TestContext.Out.WriteLine("datagram acknowledgement arrived");
                 if (!t.IsCompletedSuccessfully)
+                {
+                    TestContext.Out.WriteLine($"datagram acknowledgement unsuccessful, status: {t.Status}");
+                    if (t.Exception is not null)
+                        TestContext.Out.WriteLine(t.Exception.ToString());
                     Assert.Fail(t.Status.ToString());
+                    return;
+                }
                 dgAcknowledged = true;
                 ((CountdownEvent)o!).Signal();
+                TestContext.Out.WriteLine("handled datagram acknowledgement");
             }, cde, TaskScheduler.Default);
 
         _serverSide.DatagramReceived += (_, bytes) => {
+            TestContext.Out.WriteLine("DatagramReceived event");
             dgReceived = true;
             BigSpanAssert.AreEqual<byte>(utf8Hello.Span, bytes);
             cde.Signal();
+            TestContext.Out.WriteLine("handled server DatagramReceived");
         };
 
+        TestContext.Out.WriteLine("sending datagram");
         _clientSide.SendDatagram(dg);
 
+        TestContext.Out.WriteLine("waiting on async events");
         cde.Wait();
 
+        TestContext.Out.WriteLine("waiting finished");
         Assert.True(dgSent);
         Assert.True(dgAcknowledged);
         Assert.True(dgReceived);

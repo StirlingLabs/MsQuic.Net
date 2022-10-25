@@ -220,7 +220,7 @@ public class ReliableDatagramTests
 
 
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public void RoundTripDatagram2Test()
     {
         // datagram round trip
