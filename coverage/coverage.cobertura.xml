@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.18780000000000002" branch-rate="0.0368" version="1.9" timestamp="1666724667" lines-covered="71" lines-valid="378" branches-covered="12" branches-valid="326">
+<coverage line-rate="0.18780000000000002" branch-rate="0.0368" version="1.9" timestamp="1666725057" lines-covered="71" lines-valid="378" branches-covered="12" branches-valid="326">
   <sources />
   <packages>
     <package name="StirlingLabs.MsQuic.Bindings" line-rate="0.18780000000000002" branch-rate="0.0368" complexity="518">
@@ -130,7 +130,7 @@
             </method>
             <method name="get_QUIC_STATUS_SUCCESS" signature="()" line-rate="1" branch-rate="0.5" complexity="6">
               <lines>
-                <line number="75" hits="166" branch="True" condition-coverage="50% (3/6)">
+                <line number="75" hits="146" branch="True" condition-coverage="50% (3/6)">
                   <conditions>
                     <condition number="5" type="jump" coverage="50%" />
                     <condition number="12" type="jump" coverage="50%" />
@@ -563,7 +563,7 @@
             </line>
             <line number="67" hits="0" branch="False" />
             <line number="71" hits="47" branch="False" />
-            <line number="75" hits="166" branch="True" condition-coverage="50% (3/6)">
+            <line number="75" hits="146" branch="True" condition-coverage="50% (3/6)">
               <conditions>
                 <condition number="5" type="jump" coverage="50%" />
                 <condition number="12" type="jump" coverage="50%" />
@@ -2448,12 +2448,12 @@
             </method>
             <method name="get_IDEAL_PROCESSOR_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1956" hits="21" branch="False" />
+                <line number="1956" hits="15" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_STATE_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1964" hits="58" branch="False" />
+                <line number="1964" hits="45" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -2473,7 +2473,7 @@
             </method>
             <method name="get_RESUMPTION_TICKET_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1996" hits="9" branch="False" />
+                <line number="1996" hits="8" branch="False" />
               </lines>
             </method>
             <method name="get_PEER_CERTIFICATE_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -2491,12 +2491,12 @@
             <line number="1932" hits="0" branch="False" />
             <line number="1940" hits="9" branch="False" />
             <line number="1948" hits="11" branch="False" />
-            <line number="1956" hits="21" branch="False" />
-            <line number="1964" hits="58" branch="False" />
+            <line number="1956" hits="15" branch="False" />
+            <line number="1964" hits="45" branch="False" />
             <line number="1972" hits="4" branch="False" />
             <line number="1980" hits="8" branch="False" />
             <line number="1988" hits="1" branch="False" />
-            <line number="1996" hits="9" branch="False" />
+            <line number="1996" hits="8" branch="False" />
             <line number="2004" hits="19" branch="False" />
           </lines>
         </class>
