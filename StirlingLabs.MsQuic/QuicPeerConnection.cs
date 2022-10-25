@@ -588,13 +588,15 @@ public abstract partial class QuicPeerConnection : IDisposable
             }
             case QUIC_CONNECTION_EVENT_TYPE.LOCAL_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
-                LocalEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
+                //LocalEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
+                LocalEndPoint = typedEvent.Address->AsReadOnlySockaddr().ToEndPoint();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{LocalEndPoint={LocalEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
             case QUIC_CONNECTION_EVENT_TYPE.PEER_ADDRESS_CHANGED: {
                 ref var typedEvent = ref @event.LOCAL_ADDRESS_CHANGED;
-                RemoteEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
+                //RemoteEndPoint = ((sockaddr*)typedEvent.Address)->ToEndPoint();
+                RemoteEndPoint = typedEvent.Address->AsReadOnlySockaddr().ToEndPoint();
                 Trace.TraceInformation($"{LogTimeStamp.ElapsedSeconds:F6} {this} {@event.Type} {{RemoteEndPoint={RemoteEndPoint}}}");
                 return QUIC_STATUS_SUCCESS;
             }
