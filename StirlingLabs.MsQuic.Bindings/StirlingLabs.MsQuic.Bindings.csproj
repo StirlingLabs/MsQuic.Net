@@ -8,6 +8,7 @@
         <Nullable>enable</Nullable>
         <RootNamespace>StirlingLabs.MsQuic.Bindings</RootNamespace>
         <LangVersion>10</LangVersion>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(CI)'!=''">
@@ -20,6 +21,10 @@
             Bindings for StirlingLabs.MsQuic
         </Description>
     </PropertyGroup>
+ 
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
         <PackageReference Include="System.Memory" Version="4.5.4" />
