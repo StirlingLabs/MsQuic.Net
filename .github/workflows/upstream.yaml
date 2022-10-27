@@ -364,6 +364,10 @@ jobs:
           file="${target}/${target}.csproj"
           sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version:1}\4/" "$file"
           echo "Edited $file"
+          file="MsQuicVersionOnly.proj"
+          echo "<Project><PropertyGroup><Version>${version:1}</Version></PropertyGroup></Project>" > $file
+          echo "replaced $file"
+          cat $file
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v4
