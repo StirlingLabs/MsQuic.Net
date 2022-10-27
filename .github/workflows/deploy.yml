@@ -14,9 +14,8 @@ jobs:
   
   release:
     name: Release
-    needs: [ linux, macos, windows ]
+    needs: [ build ]
     uses: StirlingLabs/Actions/.github/workflows/dotnetRelease.yaml@main
     with:
       nuget: true
-      githubToken: ${{github.token}}
-      nugetToken: ${{secrets.NUGET_STIRLINGLABS_API_KEY}}
+    secrets: inherit
