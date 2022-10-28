@@ -229,7 +229,7 @@ public class RoundTripTests
 
                 var read = serverStream.Receive(dataReceived);
 
-                Assert.AreEqual(dataLength, read);
+                Assert.IsTrue(dataLength.Equals(read));
 
                 cde.Signal();
                 output.WriteLine("handled serverStream.DataReceived");
