@@ -181,7 +181,7 @@ public class RoundTripTests
     
     [Test]
     [Timeout(1000)]
-    public unsafe void RoundTripShutdownTest()
+    public unsafe void RoundTripClientShutdownTest()
     {
         var output = TestContext.Out;
 
@@ -210,12 +210,16 @@ public class RoundTripTests
 
         cde.Reset(2);
 
-        _clientSide.ConnectionShutdown += (_, _, _, _) => {
+        _clientSide.ConnectionShutdown += (_, _, initByTransport, initByPeer) => {
+            Assert.False(initByTransport);
+            Assert.False(initByPeer);
             cde.Signal();
             output.WriteLine("handled _clientSide.ConnectionShutdown");
         };
 
-        _serverSide.ConnectionShutdown += (_, _, _, _) => {
+        _serverSide.ConnectionShutdown += (_, _, initByTransport, initByPeer) => {
+            Assert.False(initByTransport);
+            Assert.True(initByPeer);
             cde.Signal();
             output.WriteLine("handled _serverSide.ConnectionShutdown");
         };
@@ -226,6 +230,56 @@ public class RoundTripTests
         
     }
 
+    [Test]
+    [Timeout(1000)]
+    public unsafe void RoundTripServerShutdownTest()
+    {
+        var output = TestContext.Out;
+
+        using var cde = new CountdownEvent(1);
+
+        var streamOpened = false;
+
+        //clientStream.Send(utf8Hello);
+
+        QuicStream serverStream = null !;
+
+        _serverSide.IncomingStream += (_, stream) => {
+            serverStream = stream;
+            streamOpened = true;
+            cde.Signal();
+            output.WriteLine("handled _serverSide.IncomingStream");
+        };
+
+        output.WriteLine("waiting for _serverSide.IncomingStream");
+
+        using var clientStream = _clientSide.OpenStream();
+
+        cde.Wait();
+
+        Assert.True(streamOpened);
+
+        cde.Reset(2);
+
+        _clientSide.ConnectionShutdown += (_, _, initByTransport, initByPeer) => {
+            Assert.False(initByTransport);
+            Assert.True(initByPeer);
+            cde.Signal();
+            output.WriteLine("handled _clientSide.ConnectionShutdown");
+        };
+
+        _serverSide.ConnectionShutdown += (_, _, initByTransport, initByPeer) => {
+            Assert.False(initByTransport);
+            Assert.False(initByPeer);
+            cde.Signal();
+            output.WriteLine("handled _serverSide.ConnectionShutdown");
+        };
+        
+        _serverSide.Shutdown();
+        cde.Wait();
+        
+        
+    }
     [Test]
     [Timeout(10000)]
     public unsafe void RoundTripSimpleStreamTest()
