@@ -310,7 +310,7 @@ public sealed partial class QuicStream : IDisposable
     private unsafe void OnShutdownComplete(bool connectionShutdown, bool appCloseInProgress)
     {
         static void Dispatcher(
-            (QuicStream stream, EventHandler<QuicStream, bool, bool>[] handlers,
+            (QuicStream stream, IEnumerable<EventHandler<QuicStream, bool, bool>> handlers,
                 bool connectionShutdown, bool appCloseInProgress) o)
         {
             foreach (var eh in o.handlers)
@@ -319,8 +319,9 @@ public sealed partial class QuicStream : IDisposable
 
         if (ShutdownComplete is not null)
             ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-                (this, (EventHandler<QuicStream, bool, bool>[])
-                    ShutdownComplete.GetInvocationList(),
+                (this, 
+                    ShutdownComplete.GetInvocationList()
+                        .Cast<EventHandler<QuicStream, bool, bool>>(),
                     connectionShutdown,
                     appCloseInProgress));
     }

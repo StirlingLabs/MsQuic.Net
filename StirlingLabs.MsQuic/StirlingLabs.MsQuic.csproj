@@ -18,6 +18,10 @@
         </Description>
     </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DocumentationFile>bin\Release\StirlingLabs.MsQuic.xml</DocumentationFile>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\StirlingLabs.MsQuic.Bindings\StirlingLabs.MsQuic.Bindings.csproj">
             <SetTargetFramework>TargetFramework=$(TargetFramework)</SetTargetFramework>

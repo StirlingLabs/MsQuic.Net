@@ -153,6 +153,8 @@ public abstract partial class QuicPeerConnection : IDisposable
     {
         if (Registration.Disposed) return;
 
+        OnShutdown(0, false, false);
+
         Registration.Table.ConnectionShutdown(Handle,
             silent
                 ? QUIC_CONNECTION_SHUTDOWN_FLAGS.SILENT
@@ -473,7 +475,8 @@ public abstract partial class QuicPeerConnection : IDisposable
 
         try
         {
-            var delegates = _datagramReceived.GetInvocationList();
+            var delegates = _datagramReceived.GetInvocationList()
+                .Cast<ReadOnlySpanEventHandler<QuicPeerConnection, byte>>();
             foreach (var dg in delegates)
             {
                 ThreadPool.QueueUserWorkItem(state => {
@@ -788,56 +791,58 @@ public abstract partial class QuicPeerConnection : IDisposable
     protected QuicStream? OutboundAcknowledgementStream { get; set; }
 
 
+    /// <summary>
+    /// Connection shutdown event.
+    /// </summary>
+    /// <remarks>
+    /// <list type="table">
+    /// <listheader>
+    /// <term>Parameter Name</term>
+    /// <description>Parameter Type</description>
+    /// </listheader>
+    /// <item><term>sender</term><description><see cref="QuicPeerConnection"/></description></item>
+    /// <item><term>errorCode</term><description><see langword="ulong"/></description></item>
+    /// <item><term>initiatedByTransport</term><description><see langword="bool"/></description></item>
+    /// <item><term>initiatedByPeer</term><description><see langword="bool"/></description></item>
+    /// </list>
+    /// </remarks>
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
     public event EventHandler<QuicPeerConnection, ulong, bool, bool>? ConnectionShutdown;
 
-    private unsafe void OnShutdown(
-        ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_TRANSPORT_e__Struct typedEvent)
+    private unsafe void OnShutdown(ulong errorCode, bool initiatedByTransport, bool initiatedByPeer)
     {
         static void Dispatcher(
             (
                 QuicPeerConnection connection,
                 ulong errorCode,
-                EventHandler<QuicPeerConnection, ulong, bool, bool>[] handlers
+                bool initiatedByTransport, bool initiatedByPeer,
+                IEnumerable<EventHandler<QuicPeerConnection, ulong, bool, bool>> handlers
                 ) o)
         {
             foreach (var eh in o.handlers)
-                eh.Invoke(o.connection, o.errorCode, true, false);
+                eh.Invoke(o.connection, o.errorCode, o.initiatedByTransport, o.initiatedByPeer);
         }
 
         if (ConnectionShutdown is not null)
             ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
                 (
                     this,
-                    unchecked((ulong)typedEvent.Status),
-                    (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
+                    errorCode,
+                    initiatedByTransport,
+                    initiatedByPeer,
+                    ConnectionShutdown.GetInvocationList()
+                        .Cast<EventHandler<QuicPeerConnection, ulong, bool, bool>>()
                 )
             );
     }
+
+    private unsafe void OnShutdown(
+        ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_TRANSPORT_e__Struct typedEvent)
+        => OnShutdown(unchecked((ulong)typedEvent.Status), true, false);
 
     private unsafe void OnShutdown(
         ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_INITIATED_BY_PEER_e__Struct typedEvent)
-    {
-        static void Dispatcher(
-            (
-                QuicPeerConnection connection,
-                ulong errorCode,
-                EventHandler<QuicPeerConnection, ulong, bool, bool>[] handlers
-                ) o)
-        {
-            foreach (var eh in o.handlers)
-                eh.Invoke(o.connection, o.errorCode, false, true);
-        }
-
-        if (ConnectionShutdown is not null)
-            ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-                (
-                    this,
-                    typedEvent.ErrorCode,
-                    (EventHandler<QuicPeerConnection, ulong, bool, bool>[])ConnectionShutdown.GetInvocationList()
-                )
-            );
-    }
+        => OnShutdown(typedEvent.ErrorCode, false, true);
 
 
     [SuppressMessage("Design", "CA1003", Justification = "Done")]
@@ -848,7 +853,7 @@ public abstract partial class QuicPeerConnection : IDisposable
         ref QUIC_CONNECTION_EVENT._Anonymous_e__Union._SHUTDOWN_COMPLETE_e__Struct typedEvent)
     {
         static void Dispatcher(
-            (QuicPeerConnection connection, EventHandler<QuicPeerConnection, bool, bool, bool>[] handlers,
+            (QuicPeerConnection connection, IEnumerable<EventHandler<QuicPeerConnection, bool, bool, bool>> handlers,
                 bool appCloseInProgress, bool handshakeCompleted, bool peerAcknowledged) o)
         {
             foreach (var eh in o.handlers)
@@ -857,8 +862,9 @@ public abstract partial class QuicPeerConnection : IDisposable
 
         if (ConnectionShutdownComplete is not null)
             ThreadPoolHelpers.QueueUserWorkItemFast(&Dispatcher,
-                (this, (EventHandler<QuicPeerConnection, bool, bool, bool>[])
-                    ConnectionShutdownComplete.GetInvocationList(),
+                (this, 
+                    ConnectionShutdownComplete.GetInvocationList()
+                        .Cast<EventHandler<QuicPeerConnection, bool, bool, bool>>(),
                     typedEvent.AppCloseInProgress != 0,
                     typedEvent.HandshakeCompleted != 0,
                     typedEvent.PeerAcknowledgedShutdown != 0));

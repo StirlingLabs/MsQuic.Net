@@ -178,6 +178,53 @@ public class RoundTripTests
     {
         // intentionally empty
     }
+    
+    [Test]
+    [Timeout(1000)]
+    public unsafe void RoundTripShutdownTest()
+    {
+        var output = TestContext.Out;
+
+        using var cde = new CountdownEvent(1);
+
+        var streamOpened = false;
+
+        //clientStream.Send(utf8Hello);
+
+        QuicStream serverStream = null !;
+
+        _serverSide.IncomingStream += (_, stream) => {
+            serverStream = stream;
+            streamOpened = true;
+            cde.Signal();
+            output.WriteLine("handled _serverSide.IncomingStream");
+        };
+
+        output.WriteLine("waiting for _serverSide.IncomingStream");
+
+        using var clientStream = _clientSide.OpenStream();
+
+        cde.Wait();
+
+        Assert.True(streamOpened);
+
+        cde.Reset(2);
+
+        _clientSide.ConnectionShutdown += (_, _, _, _) => {
+            cde.Signal();
+            output.WriteLine("handled _clientSide.ConnectionShutdown");
+        };
+
+        _serverSide.ConnectionShutdown += (_, _, _, _) => {
+            cde.Signal();
+            output.WriteLine("handled _serverSide.ConnectionShutdown");
+        };
+        
+        _clientSide.Shutdown();
+        cde.Wait();
+        
+        
+    }
 
     [Test]
     [Timeout(10000)]
