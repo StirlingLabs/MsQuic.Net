@@ -807,7 +807,7 @@ public sealed partial class QuicStream : IDisposable
         if (Registration.Disposed) return;
 
         // TODO: validate _runState?
-        Connection.Shutdown();
+        Shutdown();
         Registration.Table.SetCallbackHandler(Handle, null, null);
         //Registration.Table.StreamClose(Handle);
         _gcHandle.Free();
@@ -819,7 +819,7 @@ public sealed partial class QuicStream : IDisposable
         if (Registration.Disposed) return;
 
         // TODO: validate _runState?
-        Connection.Shutdown();
+        Shutdown();
         //Registration.Table.SetCallbackHandler(Handle, null, null);
         if (!Registration.Disposed)
             Registration.Table.StreamClose(Handle);
