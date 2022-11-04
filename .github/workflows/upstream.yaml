@@ -138,6 +138,7 @@ jobs:
                 manifestRidComma=",  "
               else
                 echo "   - This release has no files for ${rid}."
+                exit 1
               fi
             done
             if [ $ridExist -gt 0 ] ; then
@@ -149,6 +150,7 @@ jobs:
               releasesReceived=$((releasesReceived+1))
             else
               echo "   - This release has no files at all."
+              exit 1
               rmdir ${release}
             fi
           done
@@ -223,7 +225,7 @@ jobs:
       needs.binaries.outputs.continue == 'true'
     strategy:
       fail-fast: true
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         version: ${{ fromJson(needs.binaries.outputs.matrixVersion) }}
         rid: ${{ fromJson(needs.binaries.outputs.matrixRid) }}
