@@ -91,7 +91,7 @@ jobs:
             ridArray="${ridArray} ]"
           fi
           echo "ridArray=$ridArray" >> $GITHUB_OUTPUT
-          echo "update=$continue" >> $GITHUB_OUTPUT
+          echo "continue=$continue" >> $GITHUB_OUTPUT
           echo "releases needed ${releasesNeeded}"
           echo "releasesNeeded=[ ${releasesNeeded} ]" >> $GITHUB_OUTPUT
           #
