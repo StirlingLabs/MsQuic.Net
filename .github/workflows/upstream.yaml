@@ -19,146 +19,68 @@ jobs:
     name: Check Upstream Status
     runs-on: ubuntu-22.04
     outputs:
-      upstream: ${{ steps.check.outputs.upstream }}
-      update: ${{ steps.check.outputs.update }}
-      packagesUrl: ${{ steps.check.outputs.packagesUrl }}
-      releasesUrl: ${{ steps.check.outputs.releasesUrl }}
-      tagsUrl: ${{ steps.check.outputs.tagsUrl }}
-      latestRelease: ${{ steps.check.outputs.latestRelease }}
-      gitUrl: ${{ steps.check.outputs.gitUrl }}
+      debug: ${{ steps.status.outputs.debug }}
+      continue: ${{ steps.test.outputs.continue }}
+      upstream: ${{ steps.test.outputs.upstream }}
+      rids: ${{ steps.test.outputs.rids }}
+      ridArray: ${{ steps.test.outputs.ridArray }}
+      packagesUrl: ${{ steps.test.outputs.packagesUrl }}
+      releasesUrl: ${{ steps.test.outputs.releasesUrl }}
+      tagsUrl: ${{ steps.test.outputs.tagsUrl }}
+      gitUrl: ${{ steps.test.outputs.gitUrl }}
     steps:
+      - name: Debug Status
+        if: github.event_name == 'pull_request'
+        id: status
+        run: |
+          echo "debug=true" >> $GITHUB_OUTPUT
+
       - name: Check API
-        id: check
+        id: test
         env:
           upstream: 'microsoft/msquic'
-          canary: 'StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl'
+          rids: 'linux-x64 osx win-x64'
+          ignoreReleases: 'v2.0.4'
+          nupkgNamePrefix: 'StirlingLabs.MsQuic.Bindings.runtime.'
+          nupkgNameSuffix: '.openssl'
         run: |
-          latestRelease=$(jq -r ".tag_name" <<< $(curl -s https://api.github.com/repos/${upstream}/releases/latest))
-          packagesUrl="https://api.nuget.org/v3-flatcontainer/${canary}/index.json"
-          packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
-          # Check if latestRelease is already a package
-          jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${latestRelease:1}" && update="false" || update="true"
-          if [[ "$update" == "false" ]] ; then
-            echo "No update necessary"
-          else
-            echo "Latest upstream release doesn't exist as NuPkg, we need to do some work."
-          fi
-          echo "upstream=${upstream}" >> $GITHUB_OUTPUT
-          echo "packagesUrl=${packagesUrl}" >> $GITHUB_OUTPUT
-          echo "releasesUrl=https://api.github.com/repos/${upstream}/releases" >> $GITHUB_OUTPUT
-          echo "tagsUrl=https://api.github.com/repos/${upstream}/tags" >> $GITHUB_OUTPUT
-          echo "update=$update" >> $GITHUB_OUTPUT
-          echo "latestRelease=${latestRelease}" >> $GITHUB_OUTPUT
-          echo "gitUrl=git://github.com/${upstream}.git" >> $GITHUB_OUTPUT
-
-  binaries:
-    name: Get Upstream Binaries
-    needs: [ check ]
-    if: needs.check.outputs.update == 'true'
-    runs-on: ubuntu-22.04
-    outputs:
-      continue: ${{ steps.download.outputs.continue }}
-      manifest: ${{ steps.download.outputs.manifest }}
-      matrixVersion: ${{ steps.download.outputs.versionArray }}
-      matrixRid: ${{ steps.download.outputs.ridArray }}
-      readme: ${{ steps.ancillary.outputs.readme }}
-      icon: ${{ steps.ancillary.outputs.icon }}
-    steps:
-      - name: Filter Upsream Releases
-        id: filter
-        env:
-          packagesUrl: ${{ needs.check.outputs.packagesUrl }}
-          releasesUrl: ${{ needs.check.outputs.releasesUrl }}
-        run: |
-          packagesJson=$(jq -c . <<< $(curl -s ${packagesUrl}))
+          # GitHub info
+          releasesUrl=https://api.github.com/repos/${upstream}/releases
           releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
+          releaseArray=$(jq -r ".[].tag_name" <<< $releasesJson)
+          echo "release list ${releaseArray}"
+          # NuGet info
+          declare -A packagesJson=()
+          for rid in $rids ; do
+            nupkgName="${nupkgNamePrefix}${rid}${nupkgNameSuffix}"
+            packagesUrl="https://api.nuget.org/v3-flatcontainer/${nupkgName}/index.json"
+            packageVersions[${rid//-/_}]=$(jq -c . <<< $(curl -s ${packagesUrl}))
+          done
+          #
+          # Get a list of upstream releases that do not have all of the required packages
+          continue="false"
           releasesNeeded=""
           space=""
-          releaseList=$(jq -r ".[].tag_name" <<< $releasesJson)
-          echo "release list ${releaseList}"
-          for release in ${releaseList[@]} ; do
-            jq -r ".versions|sort|to_entries[]|(.value)" <<< $packagesJson | sort -V | grep "${release:1}" && exists="true" || exists="false"
-            if [[ "$exists" != "true" ]] ; then
-              major="${release%%.*}"
-              if [ ${major:1} -ge 2 ] ; then
-                releasesNeeded="${releasesNeeded}${space}${release}"
-                space=" "
+          for release in ${releaseArray[@]} ; do
+            # Skip exceptions due to upstream peculiarities (not in list and major version > 2)
+            if [[ "$ignoreReleases" != *"$release"* ]] && [[ ${${release%%.*}:1} -ge 2 ]] ; then
+              # If the package is valid, consider it
+              packageExists=""
+              for rid in $rids ; do
+                if [[ "$packageExists" != "false" ]] ; then
+                  jq -r ".versions|sort|to_entries[]|(.value)" <<< ${packageVersions[${rid//-/_}]} | sort -V | grep "${release:1}" && packageExists="true" || packageExists="false"
+                fi
+              done
+              if [[ "$packageExists" == "false" ]] ; then
+                continue="true"
+                releasesNeeded="${releasesNeeded}${space}\"${release}\""
+                space=", "
               fi
             fi
           done
-          echo "releases needed ${releasesNeeded}"
-          echo "releasesNeeded=${releasesNeeded}" >> $GITHUB_OUTPUT
-
-      - name: Get Libraries
-        id: download
-        env:
-          releasesNeeded: ${{ steps.filter.outputs.releasesNeeded }}
-          releasesUrl: ${{ needs.check.outputs.releasesUrl }}
-          tagsUrl: ${{ needs.check.outputs.tagsUrl }}
-          rids: 'linux-x64 osx win-x64'
-        run: |
-          releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
-          tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl}))
-          manifest="["
-          manifestComma=""
-          versionArray="[ "
-          versionArrayComma=""
-          releasesReceived=0
-          for release in ${releasesNeeded[@]} ; do
-            echo "Processing $release"
-            relJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $releasesJson)
-            gitBranch=$(jq -r ".target_commitish" <<< $relJson)
-            gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson)
-            mkdir ${release}
-            manifestRid=""
-            manifestRidComma=""
-            ridExist=0
-            for rid in $rids ; do
-              echo " - $rid"
-              v=${release:1}
-              case "${rid}" in
-                linux-x64)  platform="linux_x64" && file="libmsquic.so.$v" && ours="libmsquic-openssl.so" ;;
-                osx)        platform="macos_universal" && file="libmsquic.$v.dylib" && ours="libmsquic-openssl.dylib" ;;
-                win-x64)    platform="windows_x64" && file="msquic.dll" && ours="msquic-openssl.dll" ;;
-                *)          echo "Do not recognise ${os}." && exit 1 ;;
-              esac
-              filename="msquic_${platform}_Release_openssl.zip"
-              url=$(jq -r ".assets | .[] | select(.name==\"${filename}\") | .browser_download_url" <<< $relJson)
-              if [ "$url" != "" ] ; then
-                ridExist=$((ridExist+1))
-                echo "Downloading $url"
-                wget --quiet ${url}
-                unzip ${filename} -d ${platform}
-                mkdir ${release}/${rid}
-                finalFilename=${release}/${rid}/${ours}
-                mv ${platform}/bin/${file} ${finalFilename}
-                sudo chmod +r ${finalFilename}
-                rm -Rf ${platform} ${filename}
-                manifestRid="${manifestRid}${manifestRidComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${ours}\" }"
-                manifestRidComma=",  "
-              else
-                echo "   - This release has no files for ${rid}."
-                exit 1
-              fi
-            done
-            if [ $ridExist -gt 0 ] ; then
-              versionArray="${versionArray}${versionArrayComma}\"${release}\""
-              versionArrayComma=", "
-              manifest="${manifest}${manifestComma}{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $manifestRid ] }"
-              manifestComma=", "
-              echo "   - Found files for $ridExist RIDs."
-              releasesReceived=$((releasesReceived+1))
-            else
-              echo "   - This release has no files at all."
-              exit 1
-              rmdir ${release}
-            fi
-          done
-          if [ $releasesReceived -gt 0 ] ; then
-            continue=true
-            versionArray="${versionArray} ]"
-            manifest="${manifest}]"
-            # Array of possible RIDs
+          echo "upstream=$upstream" >> $GITHUB_OUTPUT
+          echo "rids=$rids" >> $GITHUB_OUTPUT
+          if [ "$continue" == "true" ] ; then
             ridArray="[ "
             ridArrayComma=""
             for rid in $rids ; do
@@ -166,21 +88,96 @@ jobs:
               ridArrayComma=", "
             done
             ridArray="${ridArray} ]"
+          fi
+          echo "ridArray=$ridArray" >> $GITHUB_OUTPUT
+          echo "update=$continue" >> $GITHUB_OUTPUT
+          echo "releases needed ${releasesNeeded}"
+          echo "releasesNeeded=[ ${releasesNeeded} ]" >> $GITHUB_OUTPUT
+          #
+          # Make these URLs available for other scripts
+          echo "tagsUrl=https://api.github.com/repos/${upstream}/tags" >> $GITHUB_OUTPUT
+          echo "gitUrl=git://github.com/${upstream}.git" >> $GITHUB_OUTPUT
+
+  binaries:
+    name: Get Upstream Binaries
+    needs: [ check ]
+    if: needs.check.outputs.continue == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        release: ${{ fromJson(needs.check.outputs.releasesNeeded) }}
+    runs-on: ubuntu-22.04
+    outputs:
+      continue: ${{ steps.download.outputs.continue }}
+      manifest: ${{ steps.download.outputs.manifest }}
+      matrixRid: ${{ steps.download.outputs.ridArray }}
+      readme: ${{ steps.ancillary.outputs.readme }}
+      icon: ${{ steps.ancillary.outputs.icon }}
+    steps:
+      - name: Get Libraries
+        id: download
+        env:
+          release: ${{ matrix.release }}
+          releasesUrl: ${{ needs.check.outputs.releasesUrl }}
+          tagsUrl: ${{ needs.check.outputs.tagsUrl }}
+          rids: ${{ needs.check.outputs.rids }}
+        run: |
+          #
+          # Get info about the release being processed
+          echo "Processing $release"
+          releaseJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $$(curl -s ${releasesUrl}))
+          gitBranch=$(jq -r ".target_commitish" <<< $releaseJson)
+          tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl}))
+          gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson)
+          #
+          # Process this release
+          continue="false"
+          mkdir ${release}
+          ridsAvailable="" && ridsAvailableComma=""
+          for rid in $rids ; do
+            echo " - $rid"
+            v=${release:1}
+            case "${rid}" in
+              linux-x64)  platform="linux_x64" && upstreamFilename="libmsquic.so.$v" && ourFilename="libmsquic-openssl.so" ;;
+              osx)        platform="macos_universal" && upstreamFilename="libmsquic.$v.dylib" && ourFilename="libmsquic-openssl.dylib" ;;
+              win-x64)    platform="windows_x64" && upstreamFilename="msquic.dll" && ourFilename="msquic-openssl.dll" ;;
+              *)          echo "Do not recognise ${os}." && exit 1 ;;
+            esac
+            archive="msquic_${platform}_Release_openssl.zip"
+            url=$(jq -r ".assets | .[] | select(.name==\"${archive}\") | .browser_download_url" <<< $releaseJson)
+            if [ "$url" != "" ] ; then
+              echo "Downloading $url"
+              wget --quiet ${url}
+              unzip ${archive} -d ${platform}
+              mkdir ${release}/${rid}
+              finalFilename=${release}/${rid}/${ourFilename}
+              mv ${platform}/bin/${upstreamFilename} ${finalFilename}
+              sudo chmod +r ${finalFilename}
+              rm -Rf ${platform} ${archive}
+              ridsAvailable="${ridsAvailable}${ridsAvailableComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${ours}\" }"
+              ridsAvailableComma=",  "
+            else
+              echo "   - This release has no files for ${rid}."
+            fi
+          done
+
+          if [ "$ridsAvailable" != "" ] ; then
+            continue="true"
+            manifest="{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $ridsAvailable ] }"
           else
             continue=false
           fi
           #
           # Outputs
           echo "continue=${continue}" >> $GITHUB_OUTPUT
-          echo "versionArray=${versionArray}" >> $GITHUB_OUTPUT
-          echo "ridArray=${ridArray}" >> $GITHUB_OUTPUT
           echo "manifest=${manifest}" >> $GITHUB_OUTPUT
 
       - name: Upload Libraries
         if: steps.download.outputs.continue == 'true'
         uses: actions/upload-artifact@v3
         with:
-          name: Libraries
+          name: Libraries-${{ matrix.release }}
           path: "./*"
 
       - name: Get Source
@@ -195,6 +192,7 @@ jobs:
         env:
           readme: StirlingLabs.MsQuic.Bindings/README.md
           icon: SL.png
+          manifest: ${{ steps.download.outputs.manifest }}
         run: |
           if [[ -s "${readme}" ]] ; then
             echo "readme=${readme}" >> $GITHUB_OUTPUT
@@ -206,50 +204,63 @@ jobs:
           else
             echo "README Not found at ${icon}"
           fi
+          echo $manifest > manifest.json
           find .
 
       - name: Upload Ancillaries
         if: steps.download.outputs.continue == 'true'
         uses: actions/upload-artifact@v3
         with:
-          name: Ancillaries
+          name: Ancillaries-${{ matrix.release }}
           path: |
             ${{ steps.ancillary.outputs.readme }}
             ${{ steps.ancillary.outputs.icon }}
+            manifest.json
 
   nupkg:
     name: Publish NuPkg
     needs: [ check, binaries ]
     if: |
-      needs.check.outputs.update == 'true' &&
+      needs.check.outputs.continue == 'true' &&
       needs.binaries.outputs.continue == 'true'
     strategy:
       fail-fast: true
       max-parallel: 3
       matrix:
-        version: ${{ fromJson(needs.binaries.outputs.matrixVersion) }}
+        version: ${{ fromJson(needs.check.outputs.releasesNeeded) }}
         rid: ${{ fromJson(needs.binaries.outputs.matrixRid) }}
     runs-on: ubuntu-22.04
     steps:
-      - name: Get Libraries
-        id: libraries
+      - name: Get Ancillaries
+        id: ancillaries
         uses: actions/download-artifact@v3
         with:
-          name: Libraries
+          name: Ancillaries-${{ matrix.version }}
 
       - name: Data
         id: data
         env: 
           version: ${{ matrix.version }}
           rid: ${{ matrix.rid }}
-          json: ${{ needs.binaries.outputs.manifest }}
+          manifest: ${{steps.ancillaries.outputs.download-path}}/manifest.json
         run: |
-          vJson=$(jq -r ".[] | select(.version==\"${version}\")" <<< $json)
-          gitCommit=$(jq -r ".gitCommit" <<< $vJson)
-          gitBranch=$(jq -r ".gitBranch" <<< $vJson)
-          location=$(jq -r ".platforms[] | select(.rid==\"${rid}\") | .location" <<< $vJson)
-          filename=$(jq -r ".platforms[] | select(.rid==\"${rid}\") | .filename" <<< $vJson)
-          echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
+          if [[ ! -s $manifest ]] ; then
+            echo "Manifest does not exist"
+            exit 1
+          fi
+          ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" $manifest)
+          if [[ "$ridJson" == "" ]] ; then
+            echo "No manifest for $rid, so no need to continue."
+            continue="false"
+          else
+            gitCommit=$(jq -r ".gitCommit" $manifest)
+            gitBranch=$(jq -r ".gitBranch" $manifest)
+            location=$(jq -r ".location" <<< $ridJson)
+            filename=$(jq -r ".filename" <<< $ridJson)
+            continue="true"
+            echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
+          fi
+          echo "continue=${continue}" >> $GITHUB_OUTPUT
           echo "gitCommit=${gitCommit}" >> $GITHUB_OUTPUT
           echo "gitBranch=${gitBranch}" >> $GITHUB_OUTPUT
           echo "location=${location}" >> $GITHUB_OUTPUT
@@ -257,17 +268,20 @@ jobs:
           echo "ersion=${version:1}" >> $GITHUB_OUTPUT # remove the v
           echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> $GITHUB_OUTPUT
 
-      - name: Get Ancillaries
-        id: ancillaries
+      - name: Get Libraries
+        if: steps.data.outputs.continue == 'true'
+        id: libraries
         uses: actions/download-artifact@v3
         with:
-          name: Ancillaries
+          name: Libraries-${{ matrix.version }}
 
       - name: Show File Context
+        if: steps.data.outputs.continue == 'true'
         run: |
           find .
 
       - name: Create NuSpec
+        if: steps.data.outputs.continue == 'true'
         id: nuspec
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
@@ -285,31 +299,49 @@ jobs:
           gitCommit: ${{ steps.data.outputs.gitCommit }}
 
       - name: Build NuPkg
+        if: steps.data.outputs.continue == 'true'
+        id: build
         env:
           nuspec: ${{ steps.nuspec.outputs.filename }}
         run: |
           nuget pack $nuspec
+          [ $? -eq 0 ] && continue="true" || continue="false"
+          echo "continue=${continue}" >> $GITHUB_OUTPUT
           ls -la
 
       - name: Push NuPkg to NuGet
+        if: steps.build.outputs.continue == 'true'
+        id: push
         env:
-          key: ${{ secrets.NUGET_STIRLINGLABS_API_KEY }}
-          url: "https://api.nuget.org/v3/index.json"
+          debug: ${{ needs.check.outputs.debug }}
+          githubKey: ${{ github.token }}
+          githubUrl: "https://nuget.pkg.github.com/${{github.repository_owner}}/index.json"
+          nugetKey: ${{ secrets.NUGET_STIRLINGLABS_API_KEY }}
+          nugetUrl: "https://api.nuget.org/v3/index.json"
         run: |
+          if [[ "$debug" == "true" ]] ; then
+            key="$githubKey" && url="$githubUrl"
+          else
+            key="$nugetKey" && url="$nugetUrl"
+          fi
           dotnet nuget push *.nupkg -k $key -s $url --no-symbols --skip-duplicate
+          [ $? -eq 0 ] && continue="true" || continue="false"
+          echo "continue=${continue}" >> $GITHUB_OUTPUT
 
       - name: Summary
+        if: steps.push.outputs.continue == 'true'
         id: summary
         env:
           id: ${{ steps.data.outputs.packageName }}
           version: ${{ matrix.version }}
+          rid: ${{ matrix.rid }}
         run: |
-          echo "### Uploaded NuPkg for [${id}](https://www.nuget.org/packages/${id}) ${version}." >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded NuPkg for [${id}](https://www.nuget.org/packages/${id}) ${version} ${rid}." >> $GITHUB_STEP_SUMMARY
 
   code:
     name: Get Upstream Code
-    needs: [ check, nupkg ]
-    if: needs.check.outputs.update == 'true'
+    needs: [ check ]
+    if: needs.check.outputs.continue == 'true'
     runs-on: ubuntu-22.04
     steps:
       - name: Get Our Source
