@@ -63,12 +63,13 @@ jobs:
           space=""
           for release in ${releaseArray[@]} ; do
             # Skip exceptions due to upstream peculiarities (not in list and major version > 2)
-            if [[ "$ignoreReleases" != *"$release"* ]] && [[ ${${release%%.*}:1} -ge 2 ]] ; then
+            digits=${release:1}
+            if [[ "$ignoreReleases" != *"$release"* ]] && [[ ${digits%%.*} -ge 2 ]] ; then
               # If the package is valid, consider it
               packageExists=""
               for rid in $rids ; do
                 if [[ "$packageExists" != "false" ]] ; then
-                  jq -r ".versions|sort|to_entries[]|(.value)" <<< ${packageVersions[${rid//-/_}]} | sort -V | grep "${release:1}" && packageExists="true" || packageExists="false"
+                  jq -r ".versions|sort|to_entries[]|(.value)" <<< ${packageVersions[${rid//-/_}]} | sort -V | grep "${digits}" && packageExists="true" || packageExists="false"
                 fi
               done
               if [[ "$packageExists" == "false" ]] ; then
