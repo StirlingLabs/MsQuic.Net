@@ -28,6 +28,7 @@ jobs:
       releasesUrl: ${{ steps.test.outputs.releasesUrl }}
       tagsUrl: ${{ steps.test.outputs.tagsUrl }}
       gitUrl: ${{ steps.test.outputs.gitUrl }}
+      releasesNeeded: ${{ steps.test.outputs.releasesNeeded }}
     steps:
       - name: Debug Status
         if: github.event_name == 'pull_request'
@@ -45,7 +46,7 @@ jobs:
           nupkgNameSuffix: '.openssl'
         run: |
           # GitHub info
-          releasesUrl=https://api.github.com/repos/${upstream}/releases
+          releasesUrl="https://api.github.com/repos/${upstream}/releases"
           releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
           releaseArray=$(jq -r ".[].tag_name" <<< $releasesJson)
           echo "release list ${releaseArray}"
@@ -96,6 +97,7 @@ jobs:
           echo "releasesNeeded=[ ${releasesNeeded} ]" >> $GITHUB_OUTPUT
           #
           # Make these URLs available for other scripts
+          echo "releasesUrl=${releasesUrl}" >> $GITHUB_OUTPUT
           echo "tagsUrl=https://api.github.com/repos/${upstream}/tags" >> $GITHUB_OUTPUT
           echo "gitUrl=git://github.com/${upstream}.git" >> $GITHUB_OUTPUT
 
@@ -127,7 +129,7 @@ jobs:
           #
           # Get info about the release being processed
           echo "Processing $release"
-          releaseJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $$(curl -s ${releasesUrl}))
+          releaseJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $(curl -s ${releasesUrl}))
           gitBranch=$(jq -r ".target_commitish" <<< $releaseJson)
           tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl}))
           gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson)
@@ -229,7 +231,7 @@ jobs:
       max-parallel: 3
       matrix:
         version: ${{ fromJson(needs.check.outputs.releasesNeeded) }}
-        rid: ${{ fromJson(needs.binaries.outputs.matrixRid) }}
+        rid: ${{ fromJson(needs.check.outputs.ridArray) }}
     runs-on: ubuntu-22.04
     steps:
       - name: Get Ancillaries
@@ -354,20 +356,27 @@ jobs:
         id: retrieve
         env:
           upstream: ${{ needs.check.outputs.upstream }}
-          version: ${{ needs.check.outputs.latestRelease }}
           import: 'src/cs/lib'
           target: 'StirlingLabs.MsQuic.Bindings'
         run: |
-          base="$upstream"
-          url="https://github.com/${upstream}/archive/refs/tags/${version}.zip"
+          base="${upstream}"
+          latestJson=$(curl -s https://api.github.com/repos/${upstream}/releases/latest)
+          url=$(jq -r ".tag_name" <<< $latestJson)
+          url=$(jq -r ".zipball_url" <<< $latestJson)
           wget --quiet ${url} -O upstream.zip
-          mkdir -p $base
-          unzip upstream.zip -d $base
+          mkdir -p "${base}"
+          unzip upstream.zip -d "${base}"
           rm -f upstream.zip
-          codebase="${base}/$(basename ${base}/*)"
+          subdir=$(ls ${base}) && subdirArray=( $subdir )
+          if [[ "${#subdirArray[@]}" != "1" ]] ; then
+            echo "${#subdirArray[@]} objects in $base ... $subdir"
+            exit 1
+          fi
+          codebase="${base}/${subdir}"
           echo "base=${base}" >> $GITHUB_OUTPUT
           echo "source=${codebase}/${import}" >> $GITHUB_OUTPUT
           echo "target=${target}" >> $GITHUB_OUTPUT
+          echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Edit Upstream Files
         id: edit
@@ -394,7 +403,7 @@ jobs:
         id: update
         env:
           target: ${{ steps.retrieve.outputs.target }}
-          version: ${{ needs.check.outputs.latestRelease }}
+          version: ${{ steps.retrieve.outputs.version }}
         run: |
           file="${target}/${target}.csproj"
           sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version:1}\4/" "$file"
@@ -407,11 +416,11 @@ jobs:
       - name: Create PR
         uses: peter-evans/create-pull-request@v4
         with:
-          commit-message: Update to incorporate upstream changes in {{ needs.check.outputs.latestRelease }}
+          commit-message: Update to incorporate upstream changes in {{ steps.retrieve.outputs.version }}
           base: main
-          branch: upstream-${{ needs.check.outputs.latestRelease }}
+          branch: upstream-${{ steps.retrieve.outputs.version }}
           delete-branch: true
-          title: Update to ${{ needs.check.outputs.upstream }} ${{ needs.check.outputs.latestRelease }}
+          title: Update to ${{ steps.check.outputs.upstream }} ${{ steps.retrieve.outputs.version }}
           body: |
             Automatically prepared the following changes:
             - Re-imported upstream files and re-applied our modifications
@@ -420,6 +429,6 @@ jobs:
       - name: Summary
         id: summary
         env:
-          version: ${{ needs.check.outputs.latestRelease }}
+          version: ${{ steps.retrieve.outputs.version }}
         run: |
           echo "### Created PR for update to ${version}." >> $GITHUB_STEP_SUMMARY
