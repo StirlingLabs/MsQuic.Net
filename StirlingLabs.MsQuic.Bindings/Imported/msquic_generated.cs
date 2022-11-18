@@ -41,6 +41,8 @@ namespace StirlingLabs.MsQuic.Bindings
     {
         DISABLED,
         SERVER_ID_IP,
+        SERVER_ID_FIXED,
+        COUNT,
     }
 
     public enum QUIC_CREDENTIAL_TYPE
@@ -857,6 +859,9 @@ namespace StirlingLabs.MsQuic.Bindings
         [NativeTypeName("uint16_t")]
         public ushort LoadBalancingMode;
 
+        [NativeTypeName("uint32_t")]
+        public uint FixedServerID;
+
         public ref ulong IsSetFlags
         {
             get
@@ -916,17 +921,31 @@ namespace StirlingLabs.MsQuic.Bindings
                     }
                 }
 
-                [NativeTypeName("uint64_t : 62")]
-                public ulong RESERVED
+                [NativeTypeName("uint64_t : 1")]
+                public ulong FixedServerID
                 {
                     get
                     {
-                        return (_bitfield >> 2) & 0x3FFFFFFFUL;
+                        return (_bitfield >> 2) & 0x1UL;
                     }
 
                     set
                     {
-                        _bitfield = (_bitfield & ~(0x3FFFFFFFUL << 2)) | ((value & 0x3FFFFFFFUL) << 2);
+                        _bitfield = (_bitfield & ~(0x1UL << 2)) | ((value & 0x1UL) << 2);
+                    }
+                }
+
+                [NativeTypeName("uint64_t : 61")]
+                public ulong RESERVED
+                {
+                    get
+                    {
+                        return (_bitfield >> 3) & 0x1FFFFFFFUL;
+                    }
+
+                    set
+                    {
+                        _bitfield = (_bitfield & ~(0x1FFFFFFFUL << 3)) | ((value & 0x1FFFFFFFUL) << 3);
                     }
                 }
             }
