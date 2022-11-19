@@ -242,8 +242,10 @@ jobs:
 
       - name: Data
         id: data
-        env: 
+        env:
+          debug: ${{ needs.check.outputs.debug }}
           version: ${{ matrix.version }}
+          gitUrl: ${{ needs.check.outputs.gitUrl }}
           rid: ${{ matrix.rid }}
           manifest: ${{steps.ancillaries.outputs.download-path}}/manifest.json
         run: |
@@ -263,13 +265,21 @@ jobs:
             continue="true"
             echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
           fi
-          echo "continue=${continue}" >> $GITHUB_OUTPUT
-          echo "gitCommit=${gitCommit}" >> $GITHUB_OUTPUT
-          echo "gitBranch=${gitBranch}" >> $GITHUB_OUTPUT
-          echo "location=${location}" >> $GITHUB_OUTPUT
+          # If this is not a produciton build (so it will use our GitHub store), we have to lie about where it comes from
+          if [[ "$debug" == "true" ]] ; then
+            echo "Note: this is a workaround"
+            gitUrl=${{ github.repositoryUrl }}
+            gitCommit=${{ github.sha }}
+            gitBranch=${{ github.ref_name }}
+          fi
           echo "filename=${filename}" >> $GITHUB_OUTPUT
+          echo "location=${location}" >> $GITHUB_OUTPUT
           echo "ersion=${version:1}" >> $GITHUB_OUTPUT # remove the v
           echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> $GITHUB_OUTPUT
+          echo "gitUrl=${gitUrl}" >> $GITHUB_OUTPUT
+          echo "gitCommit=${gitCommit}" >> $GITHUB_OUTPUT
+          echo "gitBranch=${gitBranch}" >> $GITHUB_OUTPUT
+          echo "continue=${continue}" >> $GITHUB_OUTPUT
 
       - name: Get Libraries
         if: steps.data.outputs.continue == 'true'
@@ -297,7 +307,7 @@ jobs:
           fileTargets: runtimes/${{ matrix.rid }}/native/${{ steps.data.outputs.filename }}
           readme: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.binaries.outputs.readme }}
           icon: ${{ steps.ancillaries.outputs.download-path }}/${{ needs.binaries.outputs.icon }}
-          gitUrl: ${{ needs.check.outputs.gitUrl }}
+          gitUrl: ${{ steps.data.outputs.gitUrl }}
           gitBranch: ${{ steps.data.outputs.gitBranch }}
           gitCommit: ${{ steps.data.outputs.gitCommit }}
 
