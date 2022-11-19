@@ -322,7 +322,7 @@ jobs:
           echo "continue=${continue}" >> $GITHUB_OUTPUT
           ls -la
 
-      - name: Push NuPkg to NuGet
+      - name: Push NuPkg
         if: steps.build.outputs.continue == 'true'
         id: push
         env:
@@ -430,7 +430,7 @@ jobs:
       - name: Create PR
         uses: peter-evans/create-pull-request@v4
         with:
-          commit-message: Update to incorporate upstream changes in {{ steps.retrieve.outputs.version }}
+          commit-message: Update to incorporate upstream changes in ${{ steps.retrieve.outputs.version }}
           base: main
           branch: upstream-${{ steps.retrieve.outputs.version }}
           delete-branch: true
