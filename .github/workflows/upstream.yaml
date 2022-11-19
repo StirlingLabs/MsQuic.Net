@@ -361,7 +361,7 @@ jobs:
         run: |
           base="${upstream}"
           latestJson=$(curl -s https://api.github.com/repos/${upstream}/releases/latest)
-          url=$(jq -r ".tag_name" <<< $latestJson)
+          version=$(jq -r ".tag_name" <<< $latestJson)
           url=$(jq -r ".zipball_url" <<< $latestJson)
           wget --quiet ${url} -O upstream.zip
           mkdir -p "${base}"
@@ -405,6 +405,10 @@ jobs:
           target: ${{ steps.retrieve.outputs.target }}
           version: ${{ steps.retrieve.outputs.version }}
         run: |
+          if [[ "${version:1}" == "" ]] ; then
+            echo "Version not set, can't continue."
+            exit 1
+          fi
           file="${target}/${target}.csproj"
           sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version:1}\4/" "$file"
           echo "Edited $file"
