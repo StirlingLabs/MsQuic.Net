@@ -16,90 +16,13 @@ defaults:
 
 jobs:
   check:
-    name: Check Upstream Status
-    runs-on: ubuntu-22.04
-    outputs:
-      debug: ${{ steps.status.outputs.debug }}
-      continue: ${{ steps.test.outputs.continue }}
-      upstream: ${{ steps.test.outputs.upstream }}
-      rids: ${{ steps.test.outputs.rids }}
-      ridArray: ${{ steps.test.outputs.ridArray }}
-      packagesUrl: ${{ steps.test.outputs.packagesUrl }}
-      releasesUrl: ${{ steps.test.outputs.releasesUrl }}
-      tagsUrl: ${{ steps.test.outputs.tagsUrl }}
-      gitUrl: ${{ steps.test.outputs.gitUrl }}
-      releasesNeeded: ${{ steps.test.outputs.releasesNeeded }}
-    steps:
-      - name: Debug Status
-        if: github.event_name == 'pull_request'
-        id: status
-        run: |
-          echo "debug=true" >> $GITHUB_OUTPUT
-
-      - name: Check API
-        id: test
-        env:
-          upstream: 'microsoft/msquic'
-          rids: 'linux-x64 osx win-x64'
-          ignoreReleases: 'v2.0.4'
-          nupkgNamePrefix: 'StirlingLabs.MsQuic.Bindings.runtime.'
-          nupkgNameSuffix: '.openssl'
-        run: |
-          # GitHub info
-          releasesUrl="https://api.github.com/repos/${upstream}/releases"
-          releasesJson=$(jq -c . <<< $(curl -s ${releasesUrl}))
-          releaseArray=$(jq -r ".[].tag_name" <<< $releasesJson)
-          echo "release list ${releaseArray}"
-          # NuGet info
-          declare -A packagesJson=()
-          for rid in $rids ; do
-            nupkgName="${nupkgNamePrefix}${rid}${nupkgNameSuffix}"
-            packagesUrl="https://api.nuget.org/v3-flatcontainer/${nupkgName}/index.json"
-            packageVersions[${rid//-/_}]=$(jq -c . <<< $(curl -s ${packagesUrl}))
-          done
-          #
-          # Get a list of upstream releases that do not have all of the required packages
-          continue="false"
-          releasesNeeded=""
-          space=""
-          for release in ${releaseArray[@]} ; do
-            # Skip exceptions due to upstream peculiarities (not in list and major version > 2)
-            digits=${release:1}
-            if [[ "$ignoreReleases" != *"$release"* ]] && [[ ${digits%%.*} -ge 2 ]] ; then
-              # If the package is valid, consider it
-              packageExists=""
-              for rid in $rids ; do
-                if [[ "$packageExists" != "false" ]] ; then
-                  jq -r ".versions|sort|to_entries[]|(.value)" <<< ${packageVersions[${rid//-/_}]} | sort -V | grep "${digits}" && packageExists="true" || packageExists="false"
-                fi
-              done
-              if [[ "$packageExists" == "false" ]] ; then
-                continue="true"
-                releasesNeeded="${releasesNeeded}${space}\"${release}\""
-                space=", "
-              fi
-            fi
-          done
-          echo "upstream=$upstream" >> $GITHUB_OUTPUT
-          echo "rids=$rids" >> $GITHUB_OUTPUT
-          if [ "$continue" == "true" ] ; then
-            ridArray="[ "
-            ridArrayComma=""
-            for rid in $rids ; do
-              ridArray="${ridArray}${ridArrayComma}\"${rid}\""
-              ridArrayComma=", "
-            done
-            ridArray="${ridArray} ]"
-          fi
-          echo "ridArray=$ridArray" >> $GITHUB_OUTPUT
-          echo "continue=$continue" >> $GITHUB_OUTPUT
-          echo "releases needed ${releasesNeeded}"
-          echo "releasesNeeded=[ ${releasesNeeded} ]" >> $GITHUB_OUTPUT
-          #
-          # Make these URLs available for other scripts
-          echo "releasesUrl=${releasesUrl}" >> $GITHUB_OUTPUT
-          echo "tagsUrl=https://api.github.com/repos/${upstream}/tags" >> $GITHUB_OUTPUT
-          echo "gitUrl=git://github.com/${upstream}.git" >> $GITHUB_OUTPUT
+    name: Check Upstream
+    uses: StirlingLabs/Actions/.github/workflows/nugetCheckRelease.yaml@main
+    with:
+      upstream: 'microsoft/msquic'
+      rids: 'linux-x64 osx win-x64'
+      ignoreReleases: 'v2.0.4'
+      nupkgName: 'StirlingLabs.MsQuic.Bindings.runtime.RID.openssl'
 
   binaries:
     name: Get Upstream Binaries
@@ -186,8 +109,6 @@ jobs:
       - name: Get Source
         if: steps.download.outputs.continue == 'true'
         uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: Identify Ancillaries
         if: steps.download.outputs.continue == 'true'
@@ -205,7 +126,7 @@ jobs:
           if [[ -s "${icon}" ]] ; then
             echo "icon=${icon}" >> $GITHUB_OUTPUT
           else
-            echo "README Not found at ${icon}"
+            echo "Icon Not found at ${icon}"
           fi
           echo $manifest > manifest.json
           find .
