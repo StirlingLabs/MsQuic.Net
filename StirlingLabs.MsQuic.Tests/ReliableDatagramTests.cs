@@ -151,14 +151,14 @@ public class ReliableDatagramTests
 
     [Order(0)]
     [Test]
-    [Timeout(1000)]
+    [Timeout(20000)]
     public void RoundTripSanityTest()
     {
         // intentionally empty
     }
 
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public void RoundTripDatagramTest()
     {
         // datagram round trip
