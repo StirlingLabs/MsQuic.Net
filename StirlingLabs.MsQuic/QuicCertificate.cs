@@ -127,7 +127,7 @@ public struct QuicCertificate
             ValidatePkcs12(pkcs12Raw, password, null);
     }
 
-    public unsafe QuicCertificate(Action<X509ChainPolicy> validationConfig, Stream certStream, string? password = null)
+    public unsafe QuicCertificate(Action<X509ChainPolicy> validationConfig, Stream certStream, string? password = null, bool skipValidation = false)
     {
         if (certStream is null)
             throw new ArgumentNullException(nameof(certStream));
@@ -141,7 +141,8 @@ public struct QuicCertificate
         fixed (QuicCertificate* self = &this)
             pkcs12Raw = StreamToSpan(self, certStream, password);
 
-        ValidatePkcs12(pkcs12Raw, password, validationConfig);
+        if (!skipValidation)
+            ValidatePkcs12(pkcs12Raw, password, validationConfig);
     }
 
 #if NET5_0_OR_GREATER

@@ -46,7 +46,7 @@ public class CertlessRoundTripTests
                 | X509VerificationFlags.IgnoreCtlSignerRevocationUnknown
                 | X509VerificationFlags.IgnoreRootRevocationUnknown
                 | X509VerificationFlags.IgnoreEndRevocationUnknown;
-        }, File.OpenRead(p12Path));
+        }, File.OpenRead(p12Path), skipValidation: true);
     }
 
     [OneTimeTearDown]

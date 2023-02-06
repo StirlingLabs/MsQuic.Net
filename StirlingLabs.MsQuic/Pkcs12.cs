@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using JetBrains.Annotations;
+using Org.BouncyCastle.Crypto.Parameters;
 using StirlingLabs.Utilities;
 using static System.Formats.Asn1.AsnDecoder;
 using static System.Formats.Asn1.AsnDecoder;
@@ -285,23 +286,19 @@ public class Pkcs12 : IEquatable<Pkcs12>, IComparable<Pkcs12>
                 // ECC
                 case "1.2.840.10045.2.1": {
                     var ecdsa = ECDsa.Create();
-                    ecdsa.ImportECPrivateKey(pk.Info.PrivateKeyBytes.Span, out _);
-                    //ecdsa.ImportPkcs8PrivateKey(pk.Info.Encode(), out _);
-                    //ecdsa.ImportPkcs8PrivateKey(pk.Bag.EncodedBagValue.Span, out _);
+                    ecdsa.ImportPkcs8PrivateKey(pk.Bag.EncodedBagValue.Span, out _);
                     return cert.CopyWithPrivateKey(ecdsa);
                 }
                 // RSA
                 case "1.2.840.113549.1.1.1": {
                     var rsa = RSA.Create();
-                    rsa.ImportRSAPrivateKey(pk.Info.PrivateKeyBytes.Span, out _);
                     rsa.ImportPkcs8PrivateKey(pk.Bag.EncodedBagValue.Span, out _);
                     return cert.CopyWithPrivateKey(rsa);
                 }
                 // DSA
                 case "1.2.840.10040.4.1": {
                     var dsa = DSA.Create();
-                    //pk.dsa.ImportPkcs8PrivateKey(pk.PrivateKeyBytes.Span, out _);
-                    dsa.ImportPkcs8PrivateKey(pk.Info.Encode(), out _);
+                    dsa.ImportPkcs8PrivateKey(pk.Bag.EncodedBagValue.Span, out _);
                     return cert.CopyWithPrivateKey(dsa);
                 }
                 default:
