@@ -11,7 +11,7 @@ jobs:
   
   threshold:
     name: Check Status
-    uses: StirlingLabs/Actions/.github/workflows/threshold.yaml@main
+    uses: StirlingLabs/Actions/.github/workflows/threshold.yaml@v22.12.0
 
   build:
     name: Build
@@ -19,5 +19,5 @@ jobs:
     if: |
       needs.threshold.outputs.continue == 'true' && 
       needs.threshold.outputs.release != 'true'
-    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@main
+    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@v22.12.0
   

@@ -8,14 +8,14 @@ on:
 jobs:
   build:
     name: Build
-    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@main
+    uses: StirlingLabs/Actions/.github/workflows/dotnetBuild.yaml@v22.12.0
     with:
       release: true
   
   release:
     name: Release
     needs: [ build ]
-    uses: StirlingLabs/Actions/.github/workflows/dotnetRelease.yaml@main
+    uses: StirlingLabs/Actions/.github/workflows/dotnetRelease.yaml@v22.12.0
     with:
       nuget: true
     secrets: inherit
