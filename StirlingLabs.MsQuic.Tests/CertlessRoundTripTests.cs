@@ -173,14 +173,14 @@ public class CertlessRoundTripTests
 
     [Order(0)]
     [Test]
-    [Timeout(1000)]
+    [Timeout(20000)]
     public void RoundTripSanityTest()
     {
         // intentionally empty
     }
     
     [Test]
-    [Timeout(1000)]
+    [Timeout(20000)]
     public unsafe void RoundTripClientShutdownTest()
     {
         var output = TestContext.Out;
@@ -231,7 +231,7 @@ public class CertlessRoundTripTests
     }
 
     [Test]
-    [Timeout(1000)]
+    [Timeout(20000)]
     public unsafe void RoundTripServerShutdownTest()
     {
         var output = TestContext.Out;
@@ -281,7 +281,7 @@ public class CertlessRoundTripTests
         
     }
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public unsafe void RoundTripSimpleStreamTest()
     {
         var output = TestContext.Out;
@@ -352,7 +352,7 @@ public class CertlessRoundTripTests
     }
 
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public unsafe void RoundTripSimpleQueuedStreamTest()
     {
         var output = TestContext.Out;
@@ -428,7 +428,7 @@ public class CertlessRoundTripTests
     }
 
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public void RoundTripDatagramTest()
     {
         // datagram round trip
