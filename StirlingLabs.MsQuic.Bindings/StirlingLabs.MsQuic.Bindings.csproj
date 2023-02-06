@@ -35,9 +35,9 @@
       <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
       <PackageReference Include="StirlingLabs.Utilities.NativeLibrary" Version="22.9.1" />
       <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.openssl" Version="2.1.5" />
-      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.osx.openssl" Version="2.1.5" />
-      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl" Version="2.1.5" />
+      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.openssl" Version="2.1.7" />
+      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.osx.openssl" Version="2.1.7" />
+      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl" Version="2.1.7" />
     </ItemGroup>
 
     <ImportGroup>
