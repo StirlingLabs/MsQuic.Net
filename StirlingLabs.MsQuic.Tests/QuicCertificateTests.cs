@@ -35,42 +35,7 @@ public class QuicCertificateTests
     [TearDown]
     public void TearDown()
         => TestContext.Out.WriteLine($"=== END {TestContext.CurrentContext.Test.FullName} ===");
-
-
-    [Test]
-    [Repeat(10)]
-    public void Pkcs12CertTest1()
-    {
-
-        var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath)!;
-        var p12Path = Path.Combine(asmDir, "localhost.p12");
-
-        var sw = Stopwatch.StartNew();
-        var p12 = new Pkcs12(p12Path);
-        var elapsed = sw.ElapsedTicks;
-        TestContext.WriteLine($"Pkcs12 ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms) ");
-
-        sw.Restart();
-        var firstCertSys = p12.GetCertificatesSys().First();
-        elapsed = sw.ElapsedTicks;
-        TestContext.WriteLine($"p12.GetCertificatesSys().First() ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
-
-        sw.Restart();
-        var firstCert = p12.GetCertificatesFast().First();
-        elapsed = sw.ElapsedTicks;
-        TestContext.WriteLine($"p12.GetCertificatesFast().First() ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
-
-        sw.Restart();
-        var sysP12 = new X509Certificate2(p12Path);
-        elapsed = sw.ElapsedTicks;
-        TestContext.WriteLine($"X509Certificate2 ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
-
-        firstCert.SubjectDN.Equivalent(new(sysP12.Subject))
-            .Should().BeTrue();
-
-        firstCertSys.Subject.Should().Be(sysP12.Subject);
-    }
-
+    
     [Test]
     [Platform("Win")]
     [Explicit]
@@ -116,15 +81,7 @@ public class QuicCertificateTests
 
         output.WriteLine("Creating QuicCertificate");
         var sw = Stopwatch.StartNew();
-        var cert = new QuicCertificate(policy => {
-            policy.RevocationMode = X509RevocationMode.NoCheck;
-            policy.DisableCertificateDownloads = false;
-            policy.VerificationFlags |= X509VerificationFlags.AllowUnknownCertificateAuthority
-                | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown
-                | X509VerificationFlags.IgnoreCtlSignerRevocationUnknown
-                | X509VerificationFlags.IgnoreRootRevocationUnknown
-                | X509VerificationFlags.IgnoreEndRevocationUnknown;
-        }, File.OpenRead(p12Path));
+        var cert = new QuicCertificate(File.OpenRead(p12Path));
         var elapsed = sw.ElapsedTicks;
         TestContext.WriteLine($"QuicCertificate ctor {elapsed} ({elapsed / (Stopwatch.Frequency / 1000.0):F1}ms)");
 
