@@ -170,10 +170,14 @@ jobs:
           gitUrl: ${{ needs.check.outputs.gitUrl }}
           rid: ${{ matrix.rid }}
           manifest: ${{steps.ancillaries.outputs.download-path}}/manifest.json
+          manifest_path: ${{steps.ancillaries.outputs.download-path}}
         run: |
           if [[ ! -s $manifest ]] ; then
-            echo "Manifest does not exist"
-            exit 1
+            echo "Manifest does not exist at $manifest"
+            ls -la
+            unzip *.zip
+            ls -la
+            [[ ! -s $manifest ]] && exit 1
           fi
           ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" $manifest)
           if [[ "$ridJson" == "" ]] ; then
