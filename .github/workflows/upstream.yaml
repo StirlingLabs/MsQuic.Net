@@ -89,13 +89,16 @@ jobs:
                 continue
               fi
               echo "Downloading $url"
-              wget --quiet "${url}"
-              unzip "${archive}" -d "${platform}"
-              mkdir "${release}/${rid}"
-              finalFilename="${release}/${rid}/${ourFilename}"
-              mv "${platform}/bin/${upstreamFilename}" "${finalFilename}"
-              sudo chmod +r "${finalFilename}"
-              rm -Rf "${platform}" "${archive}"
+              if wget --quiet "${url}" ; then
+                unzip "${archive}" -d "${platform}"
+                mkdir "${release}/${rid}"
+                finalFilename="${release}/${rid}/${ourFilename}"
+                mv "${platform}/bin/${upstreamFilename}" "${finalFilename}"
+                sudo chmod +r "${finalFilename}"
+                rm -Rf "${platform}" "${archive}"
+              else
+                echo "   - ‼️ Problem downloading $url"
+              fi
               ridsAvailable="${ridsAvailable}${ridsAvailableComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${ourFilename}\" }"
               ridsAvailableComma=",  "
             else
@@ -196,15 +199,18 @@ jobs:
             ls -la
             [[ ! -s "$manifest" ]] && exit 1
           fi
-          ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" "$manifest")
+          if ! ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" "$manifest") ; then
+            echo -e "Problem getting JSON for $rid from $manifest:\n$ridJson"
+            #exit 1
+          fi
           if [[ "$ridJson" == "" ]] ; then
             echo "No manifest for $rid, so no need to continue."
             continue="false"
           else
-            gitCommit=$(jq -r ".gitCommit" "$manifest")
-            gitBranch=$(jq -r ".gitBranch" "$manifest")
-            location=$(jq -r ".location" <<< "$ridJson")
-            filename=$(jq -r ".filename" <<< "$ridJson")
+            gitCommit=$(jq -r ".gitCommit" "$manifest") || echo "Problem getting gitCommit from manifest: $gitCommit"
+            gitBranch=$(jq -r ".gitBranch" "$manifest") || echo "Problem getting gitBranch from manifest: $gitBranch"
+            location=$(jq -r ".location" <<< "$ridJson") || echo "Problem getting location from manifest: $location"
+            filename=$(jq -r ".filename" <<< "$ridJson") || echo "Problem getting filename from manifest: $filename"
             continue="true"
             echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
           fi
