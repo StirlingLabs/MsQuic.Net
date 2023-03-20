@@ -53,10 +53,21 @@ jobs:
           #
           # Get info about the release being processed
           echo "Processing $release"
-          releaseJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< $(curl -s ${releasesUrl}))
-          gitBranch=$(jq -r ".target_commitish" <<< $releaseJson)
-          tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl}))
-          gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson)
+          if ! releasesJson="$(jq -c . <<< "$(curl -s "${releasesUrl}")")" ; then
+            echo "‼️ Problem getting releases: ${releasesJson}"
+          fi
+          if ! releaseJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< "$releasesJson") ; then
+            echo "‼️ Problem getting release info for ${release}: ${releaseJson}"
+          fi
+          if ! gitBranch=$(jq -r ".target_commitish" <<< $releaseJson) ; then
+            echo "‼️ Problem getting branch: ${gitBranch}"
+          fi
+          if ! tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl})) ; then
+            echo "‼️ Problem getting tags: ${tagsJson}"
+          fi
+          if ! gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson) ; then
+            echo "‼️ Problem getting commit: ${gitCommit}"
+          fi
           #
           # Process this release
           continue="false"
