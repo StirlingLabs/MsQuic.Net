@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        release: ${{ fromJson(needs.check.outputs.releasesNeeded) }}
+        release: ${{ fromJson(needs.check.outputs.releases_needed_json) }}
     runs-on: ubuntu-22.04
     outputs:
       continue: ${{ steps.download.outputs.continue }}
@@ -56,22 +56,22 @@ jobs:
           if ! releasesJson="$(jq -c . <<< "$(curl -s "${releasesUrl}")")" ; then
             echo "‼️ Problem getting releases: ${releasesJson}"
           fi
-          if ! releaseJson=$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< "$releasesJson") ; then
+          if ! releaseJson="$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< "$releasesJson")" ; then
             echo "‼️ Problem getting release info for ${release}: ${releaseJson}"
           fi
-          if ! gitBranch=$(jq -r ".target_commitish" <<< $releaseJson) ; then
+          if ! gitBranch="$(jq -r ".target_commitish" <<< "$releaseJson")" ; then
             echo "‼️ Problem getting branch: ${gitBranch}"
           fi
-          if ! tagsJson=$(jq -c . <<< $(curl -s ${tagsUrl})) ; then
+          if ! tagsJson="$(jq -c . <<< "$(curl -s "$tagsUrl")")" ; then
             echo "‼️ Problem getting tags: ${tagsJson}"
           fi
-          if ! gitCommit=$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< $tagsJson) ; then
+          if ! gitCommit="$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< "$tagsJson")" ; then
             echo "‼️ Problem getting commit: ${gitCommit}"
           fi
           #
           # Process this release
           continue="false"
-          mkdir ${release}
+          mkdir "${release}"
           ridsAvailable="" && ridsAvailableComma=""
           for rid in $rids ; do
             echo " - $rid"
@@ -80,23 +80,26 @@ jobs:
               linux-x64)  platform="linux_x64" && upstreamFilename="libmsquic.so.$v" && ourFilename="libmsquic-openssl.so" ;;
               osx)        platform="macos_universal" && upstreamFilename="libmsquic.$v.dylib" && ourFilename="libmsquic-openssl.dylib" ;;
               win-x64)    platform="windows_x64" && upstreamFilename="msquic.dll" && ourFilename="msquic-openssl.dll" ;;
-              *)          echo "Do not recognise ${os}." && exit 1 ;;
+              *)          echo "Do not recognise ${rid}." && exit 1 ;;
             esac
             archive="msquic_${platform}_Release_openssl.zip"
-            url=$(jq -r ".assets | .[] | select(.name==\"${archive}\") | .browser_download_url" <<< $releaseJson)
-            if [ "$url" != "" ] ; then
+            if url="$(jq -r ".assets | .[] | select(.name==\"${archive}\") | .browser_download_url" <<< "$releaseJson")" ; then
+              if [ "$url" == "" ] ; then
+                echo "   - ‼️ This release has no files for $rid."
+                continue
+              fi
               echo "Downloading $url"
-              wget --quiet ${url}
-              unzip ${archive} -d ${platform}
-              mkdir ${release}/${rid}
-              finalFilename=${release}/${rid}/${ourFilename}
-              mv ${platform}/bin/${upstreamFilename} ${finalFilename}
-              sudo chmod +r ${finalFilename}
-              rm -Rf ${platform} ${archive}
-              ridsAvailable="${ridsAvailable}${ridsAvailableComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${ours}\" }"
+              wget --quiet "${url}"
+              unzip "${archive}" -d "${platform}"
+              mkdir "${release}/${rid}"
+              finalFilename="${release}/${rid}/${ourFilename}"
+              mv "${platform}/bin/${upstreamFilename}" "${finalFilename}"
+              sudo chmod +r "${finalFilename}"
+              rm -Rf "${platform}" "${archive}"
+              ridsAvailable="${ridsAvailable}${ridsAvailableComma}{ \"rid\": \"${rid}\", \"location\": \"${finalFilename}\", \"filename\": \"${ourFilename}\" }"
               ridsAvailableComma=",  "
             else
-              echo "   - This release has no files for ${rid}."
+              echo -e "   - problem getting URL from $archive $releaseJson: $url"
             fi
           done
 
@@ -108,8 +111,8 @@ jobs:
           fi
           #
           # Outputs
-          echo "continue=${continue}" >> $GITHUB_OUTPUT
-          echo "manifest=${manifest}" >> $GITHUB_OUTPUT
+          echo "continue=${continue}" >> "$GITHUB_OUTPUT"
+          echo "manifest=${manifest}" >> "$GITHUB_OUTPUT"
 
       - name: Upload Libraries
         if: steps.download.outputs.continue == 'true'
@@ -182,41 +185,45 @@ jobs:
           rid: ${{ matrix.rid }}
           manifest: ${{steps.ancillaries.outputs.download-path}}/manifest.json
           manifest_path: ${{steps.ancillaries.outputs.download-path}}
+          this_repo_url: ${{ github.repositoryUrl }}
+          this_repo_commit: ${{ github.sha }}
+          this_repo_branch: ${{ github.ref_name }}
         run: |
-          if [[ ! -s $manifest ]] ; then
+          if [[ ! -s "$manifest" ]] ; then
             echo "Manifest does not exist at $manifest"
             ls -la
-            unzip *.zip
+            unzip ./*.zip
             ls -la
-            [[ ! -s $manifest ]] && exit 1
+            [[ ! -s "$manifest" ]] && exit 1
           fi
-          ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" $manifest)
+          ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" "$manifest")
           if [[ "$ridJson" == "" ]] ; then
             echo "No manifest for $rid, so no need to continue."
             continue="false"
           else
-            gitCommit=$(jq -r ".gitCommit" $manifest)
-            gitBranch=$(jq -r ".gitBranch" $manifest)
-            location=$(jq -r ".location" <<< $ridJson)
-            filename=$(jq -r ".filename" <<< $ridJson)
+            gitCommit=$(jq -r ".gitCommit" "$manifest")
+            gitBranch=$(jq -r ".gitBranch" "$manifest")
+            location=$(jq -r ".location" <<< "$ridJson")
+            filename=$(jq -r ".filename" <<< "$ridJson")
             continue="true"
             echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
           fi
           # If this is not a produciton build (so it will use our GitHub store), we have to lie about where it comes from
           if [[ "$debug" == "true" ]] ; then
             echo "Note: this is a workaround"
-            gitUrl=${{ github.repositoryUrl }}
-            gitCommit=${{ github.sha }}
-            gitBranch=${{ github.ref_name }}
+            gitUrl="$this_repo_url"
+            gitCommit="$this_repo_commit"
+            gitBranch="$this_repo_branch"
           fi
-          echo "filename=${filename}" >> $GITHUB_OUTPUT
-          echo "location=${location}" >> $GITHUB_OUTPUT
-          echo "ersion=${version:1}" >> $GITHUB_OUTPUT # remove the v
-          echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> $GITHUB_OUTPUT
-          echo "gitUrl=${gitUrl}" >> $GITHUB_OUTPUT
-          echo "gitCommit=${gitCommit}" >> $GITHUB_OUTPUT
-          echo "gitBranch=${gitBranch}" >> $GITHUB_OUTPUT
-          echo "continue=${continue}" >> $GITHUB_OUTPUT
+          #shellcheck disable=SC2129
+          echo "filename=${filename}" >> "$GITHUB_OUTPUT"
+          echo "location=${location}" >> "$GITHUB_OUTPUT"
+          echo "ersion=${version:1}" >> "$GITHUB_OUTPUT" # remove the v TODO: Use VersionPrefix
+          echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> "$GITHUB_OUTPUT"
+          echo "gitUrl=${gitUrl}" >> "$GITHUB_OUTPUT"
+          echo "gitCommit=${gitCommit}" >> "$GITHUB_OUTPUT"
+          echo "gitBranch=${gitBranch}" >> "$GITHUB_OUTPUT"
+          echo "continue=${continue}" >> "$GITHUB_OUTPUT"
 
       - name: Get Libraries
         if: steps.data.outputs.continue == 'true'
@@ -274,9 +281,13 @@ jobs:
           else
             key="$nugetKey" && url="$nugetUrl"
           fi
-          dotnet nuget push *.nupkg -k $key -s $url --no-symbols --skip-duplicate
-          [ $? -eq 0 ] && continue="true" || continue="false"
-          echo "continue=${continue}" >> $GITHUB_OUTPUT
+          if dotnet nuget push ./*.nupkg -k "$key" -s "$url" --no-symbols --skip-duplicate ; then
+            continue="true"
+          else
+            continue="false"
+            echo "Failed to push NuPkg to $url"
+          fi
+          echo "continue=${continue}" >> "$GITHUB_OUTPUT"
 
       - name: Summary
         if: steps.push.outputs.continue == 'true'
@@ -286,7 +297,7 @@ jobs:
           version: ${{ matrix.version }}
           rid: ${{ matrix.rid }}
         run: |
-          echo "### Uploaded NuPkg for [${id}](https://www.nuget.org/packages/${id}) ${version} ${rid}." >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded NuPkg for [${id}](https://www.nuget.org/packages/${id}) ${version} ${rid}." >> "$GITHUB_STEP_SUMMARY"
 
   code:
     name: Get Upstream Code
@@ -307,23 +318,26 @@ jobs:
           target: 'StirlingLabs.MsQuic.Bindings'
         run: |
           base="${upstream}"
-          latestJson=$(curl -s https://api.github.com/repos/${upstream}/releases/latest)
-          version=$(jq -r ".tag_name" <<< $latestJson)
-          url=$(jq -r ".zipball_url" <<< $latestJson)
-          wget --quiet ${url} -O upstream.zip
+          if ! latestJson="$(curl -s https://api.github.com/repos/${upstream}/releases/latest)" ; then
+            echo "Failed to get latest release for ${upstream}: $latestJson"
+            exit 1
+          fi
+          version="$(jq -r ".tag_name" <<< "$latestJson")"
+          url="$(jq -r ".zipball_url" <<< "$latestJson")"
+          wget --quiet "${url}" -O upstream.zip
           mkdir -p "${base}"
           unzip upstream.zip -d "${base}"
           rm -f upstream.zip
-          subdir=$(ls ${base}) && subdirArray=( $subdir )
+          subdir="$(ls "${base}")" && subdirArray=( $subdir )
           if [[ "${#subdirArray[@]}" != "1" ]] ; then
             echo "${#subdirArray[@]} objects in $base ... $subdir"
             exit 1
           fi
           codebase="${base}/${subdir}"
-          echo "base=${base}" >> $GITHUB_OUTPUT
-          echo "source=${codebase}/${import}" >> $GITHUB_OUTPUT
-          echo "target=${target}" >> $GITHUB_OUTPUT
-          echo "version=${version}" >> $GITHUB_OUTPUT
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+          echo "source=${codebase}/${import}" >> "$GITHUB_OUTPUT"
+          echo "target=${target}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Edit Upstream Files
         id: edit
@@ -332,19 +346,19 @@ jobs:
           source: ${{ steps.retrieve.outputs.source }}
           target: ${{ steps.retrieve.outputs.target }}/Imported
         run: |
-          ls -la $source
-          for entry in ${source}/*.cs ; do 
+          ls -la "$source"
+          for entry in "${source}/*.cs" ; do 
             if [[ "$entry" != *"InternalsVisible.cs" ]] ; then
               sed -i '1i \#nullable enable' "$entry"
               sed -i 's/\(^\s*\) \(\binternal\b\)/\1 public/' "$entry"
               sed -i 's/\bMicrosoft\.Quic\b/StirlingLabs.MsQuic.Bindings/' "$entry"
               sed -i 's/\(^.*DllImport.\{1,3\}\"msquic\)\(\"\)/\1-openssl\2/' "$entry"
               echo "Edited $entry"
-              mv -f "$entry" ${target}/
+              mv -f "$entry" "${target}/"
             fi
           done
           rm -Rf "$base"
-          ls -la $target
+          ls -la "$target"
 
       - name: Update Our Files
         id: update
@@ -360,9 +374,9 @@ jobs:
           sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version:1}\4/" "$file"
           echo "Edited $file"
           file="MsQuicVersionOnly.proj"
-          echo "<Project><PropertyGroup><Version>${version:1}</Version></PropertyGroup></Project>" > $file
+          echo "<Project><PropertyGroup><Version>${version:1}</Version></PropertyGroup></Project>" > "$file"
           echo "replaced $file"
-          cat $file
+          cat "$file"
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v4
@@ -382,4 +396,4 @@ jobs:
         env:
           version: ${{ steps.retrieve.outputs.version }}
         run: |
-          echo "### Created PR for update to ${version}." >> $GITHUB_STEP_SUMMARY
+          echo "### Created PR for update to ${version}." >> "$GITHUB_STEP_SUMMARY"
