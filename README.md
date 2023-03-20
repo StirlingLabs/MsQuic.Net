@@ -16,7 +16,7 @@ If know what you're doing and want to run our in-development GitHub CI builds, c
 
 ## 👀 What's included
 
-MsQuic.Net solves our requirements for cross-platform datagrams and Quic access by wrapping [MsQuic](https://github.com/microsoft/msquic) and using portable certificates (i.e. [QuicTLS/OpenSSL](https://github.com/quictls/openssl)) and our [portable sockets](hhttps://github.com/StirlingLabs/sockaddr.Net) implementation.
+MsQuic.Net solves our requirements for cross-platform datagrams and Quic access by wrapping [MsQuic](https://github.com/microsoft/msquic) and using portable certificates (i.e. [QuicTLS/OpenSSL](https://github.com/quictls/openssl)) and our [portable sockets](https://github.com/StirlingLabs/sockaddr.Net) implementation.
 
 ## 🐣 Lifecycle
 
