@@ -16,7 +16,7 @@ using static StirlingLabs.MsQuic.Bindings.MsQuic;
 namespace StirlingLabs.MsQuic.Tests;
 
 [Order(1)]
-public class RoundTripTests
+public class CertlessRoundTripTests
 {
     private QuicServerConnection _serverSide = null!;
     private QuicClientConnection _clientSide = null!;
@@ -38,7 +38,7 @@ public class RoundTripTests
         var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath);
         var p12Path = Path.Combine(asmDir!, "localhost.p12");
 
-        _cert = new(File.OpenRead(p12Path));
+        _cert = new( File.OpenRead(p12Path));
     }
 
     [OneTimeTearDown]
@@ -64,7 +64,7 @@ public class RoundTripTests
 
         using var listenerCfg = new QuicServerConfiguration(_reg, "test");
 
-        listenerCfg.ConfigureCredentials(_cert);
+        listenerCfg.ConfigureCredentials(_cert, QUIC_CREDENTIAL_FLAGS.NO_CERTIFICATE_VALIDATION);
 
         _listener = new(listenerCfg);
 
@@ -74,7 +74,7 @@ public class RoundTripTests
 
         using var clientCfg = new QuicClientConfiguration(_reg, "test");
 
-        clientCfg.ConfigureCredentials();
+        clientCfg.ConfigureCredentials(QUIC_CREDENTIAL_FLAGS.NO_CERTIFICATE_VALIDATION);
 
         _clientSide = new(clientCfg);
 

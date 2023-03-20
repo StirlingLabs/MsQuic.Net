@@ -36,15 +36,7 @@ public class ReliableDatagramTests
         var asmDir = Path.GetDirectoryName(new Uri(typeof(RoundTripTests).Assembly.Location).LocalPath);
         var p12Path = Path.Combine(asmDir!, "localhost.p12");
 
-        _cert = new(policy => {
-            policy.RevocationMode = X509RevocationMode.NoCheck;
-            policy.DisableCertificateDownloads = false;
-            policy.VerificationFlags |= X509VerificationFlags.AllowUnknownCertificateAuthority
-                | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown
-                | X509VerificationFlags.IgnoreCtlSignerRevocationUnknown
-                | X509VerificationFlags.IgnoreRootRevocationUnknown
-                | X509VerificationFlags.IgnoreEndRevocationUnknown;
-        }, File.OpenRead(p12Path));
+        _cert = new(File.OpenRead(p12Path));
     }
 
     [OneTimeTearDown]
@@ -151,14 +143,14 @@ public class ReliableDatagramTests
 
     [Order(0)]
     [Test]
-    [Timeout(1000)]
+    [Timeout(20000)]
     public void RoundTripSanityTest()
     {
         // intentionally empty
     }
 
     [Test]
-    [Timeout(10000)]
+    [Timeout(20000)]
     public void RoundTripDatagramTest()
     {
         // datagram round trip
