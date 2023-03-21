@@ -109,6 +109,7 @@ jobs:
           if [ "$ridsAvailable" != "" ] ; then
             continue="true"
             manifest="{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $ridsAvailable ] }"
+            echo $manifest > manifest.json
           else
             continue=false
           fi
@@ -146,7 +147,7 @@ jobs:
           else
             echo "Icon Not found at ${icon}"
           fi
-          echo $manifest > manifest.json
+          [[ -f manifest.json ]] && echo "Manifest already exists" || echo $manifest > manifest.json
           find .
 
       - name: Upload Ancillaries
@@ -185,6 +186,7 @@ jobs:
           debug: ${{ needs.check.outputs.debug }}
           version: ${{ matrix.version }}
           gitUrl: ${{ needs.check.outputs.gitUrl }}
+          releasePrefix: ${{ needs.check.outputs.releasePrefix }}
           rid: ${{ matrix.rid }}
           manifest: ${{steps.ancillaries.outputs.download-path}}/manifest.json
           manifest_path: ${{steps.ancillaries.outputs.download-path}}
@@ -224,7 +226,7 @@ jobs:
           #shellcheck disable=SC2129
           echo "filename=${filename}" >> "$GITHUB_OUTPUT"
           echo "location=${location}" >> "$GITHUB_OUTPUT"
-          echo "ersion=${version:1}" >> "$GITHUB_OUTPUT" # remove the v TODO: Use VersionPrefix
+          echo "ersion=${release#"$releasePrefix"} >> "$GITHUB_OUTPUT" # remove the prefix
           echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> "$GITHUB_OUTPUT"
           echo "gitUrl=${gitUrl}" >> "$GITHUB_OUTPUT"
           echo "gitCommit=${gitCommit}" >> "$GITHUB_OUTPUT"
