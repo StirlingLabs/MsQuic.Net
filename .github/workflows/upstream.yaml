@@ -326,13 +326,23 @@ jobs:
           target: 'StirlingLabs.MsQuic.Bindings'
         run: |
           base="${upstream}"
+          echo "base is ${base}"
           if ! latestJson="$(curl -s https://api.github.com/repos/${upstream}/releases/latest)" ; then
             echo "Failed to get latest release for ${upstream}: $latestJson"
             exit 1
           fi
-          version="$(jq -r ".tag_name" <<< "$latestJson")"
-          url="$(jq -r ".zipball_url" <<< "$latestJson")"
-          wget --quiet "${url}" -O upstream.zip
+          if ! version="$(jq -r ".tag_name" <<< "$latestJson")" ; then
+            echo -e "Failed to get version from JSON: $version\nsource:\n$latestJson"
+            exit 1
+          fi
+          if ! url="$(jq -r ".zipball_url" <<< "$latestJson")" ; then
+            echo -e "Failed to get URL from JSON: $url\nsource:\n$latestJson"
+            exit 1
+          fi
+          if ! wget --quiet "${url}" -O upstream.zip ; then
+            echo "Failed to download ${url}"
+            exit 1
+          fi
           mkdir -p "${base}"
           unzip upstream.zip -d "${base}"
           rm -f upstream.zip
@@ -354,15 +364,17 @@ jobs:
           source: ${{ steps.retrieve.outputs.source }}
           target: ${{ steps.retrieve.outputs.target }}/Imported
         run: |
-          ls -la "$source"
-          for entry in "${source}/*.cs" ; do 
-            if [[ "$entry" != *"InternalsVisible.cs" ]] ; then
-              sed -i '1i \#nullable enable' "$entry"
-              sed -i 's/\(^\s*\) \(\binternal\b\)/\1 public/' "$entry"
-              sed -i 's/\bMicrosoft\.Quic\b/StirlingLabs.MsQuic.Bindings/' "$entry"
-              sed -i 's/\(^.*DllImport.\{1,3\}\"msquic\)\(\"\)/\1-openssl\2/' "$entry"
-              echo "Edited $entry"
-              mv -f "$entry" "${target}/"
+          ls -la "${source}"
+          files="${source}/*.cs"
+          for file in $files ; do
+            echo -n "Processing $file ... "
+            if [[ "$file" != *"InternalsVisible.cs" ]] ; then
+              sed -i '1i \#nullable enable' "$file" && echo -n "nullable " || echo -n "‼️ nullable failed ‼️ "
+              sed -i 's/\(^\s*\) \(\binternal\b\)/\1 public/' "$file" && echo -n "public " || echo -n "‼️ public failed ‼️ "
+              sed -i 's/\bMicrosoft\.Quic\b/StirlingLabs.MsQuic.Bindings/' "$file" && echo -n "namespace " || echo -n "‼️ namespace failed ‼️ "
+              sed -i 's/\(^.*DllImport.\{1,3\}\"msquic\)\(\"\)/\1-openssl\2/' "$file" && echo -n "openssl " || echo -n "‼️ openssl failed ‼️ "
+              echo "done."
+              mv -f "$file" "${target}/"
             fi
           done
           rm -Rf "$base"
@@ -373,17 +385,20 @@ jobs:
         env:
           target: ${{ steps.retrieve.outputs.target }}
           version: ${{ steps.retrieve.outputs.version }}
+          releasePrefix: ${{ needs.check.outputs.releasePrefix }}
         run: |
-          if [[ "${version:1}" == "" ]] ; then
+          rawVersion="${version#"$releasePrefix"}"
+          echo "Updating files for version $version ($rawVersion)"
+          if [[ "$rawVersion" == "" ]] ; then
             echo "Version not set, can't continue."
             exit 1
           fi
           file="${target}/${target}.csproj"
-          sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${version:1}\4/" "$file"
-          echo "Edited $file"
+          [[ -f "$file" ]] && echo -n "Editing $file ... " || echo -n "Can't find $file ... "
+          sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${rawVersion}\4/" "$file" && echo "done." || echo "failed‼️"
           file="MsQuicVersionOnly.proj"
-          echo "<Project><PropertyGroup><Version>${version:1}</Version></PropertyGroup></Project>" > "$file"
-          echo "replaced $file"
+          [[ -f "$file" ]] && echo -n "Replacing $file ... " || echo -n "Creating $file ... "
+          echo "<Project><PropertyGroup><Version>${version:1}</Version></PropertyGroup></Project>" > "$file" && echo "done." || echo "failed‼️"
           cat "$file"
 
       - name: Create PR
