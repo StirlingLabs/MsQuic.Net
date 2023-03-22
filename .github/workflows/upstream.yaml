@@ -46,6 +46,7 @@ jobs:
         id: download
         env:
           release: ${{ matrix.release }}
+          releasePrefix: ${{ needs.check.outputs.releasePrefix }}
           releasesUrl: ${{ needs.check.outputs.releasesUrl }}
           tagsUrl: ${{ needs.check.outputs.tagsUrl }}
           rids: ${{ needs.check.outputs.rids }}
@@ -53,10 +54,10 @@ jobs:
           #
           # Get info about the release being processed
           echo "Processing $release"
-          if ! releasesJson="$(jq -c . <<< "$(curl -s "${releasesUrl}")")" ; then
-            echo "‼️ Problem getting releases: ${releasesJson}"
+          if ! allReleasesJson="$(jq -c . <<< "$(curl -s "${releasesUrl}")")" ; then
+            echo "‼️ Problem getting releases: ${allReleasesJson}"
           fi
-          if ! releaseJson="$(jq -r ".[] | select(.tag_name==\"${release}\")" <<< "$releasesJson")" ; then
+          if ! releaseJson="$(jq -r ".[] | select(.tag_name==\"${releasePrefix}${release}\")" <<< "$allReleasesJson")" ; then
             echo "‼️ Problem getting release info for ${release}: ${releaseJson}"
           fi
           if ! gitBranch="$(jq -r ".target_commitish" <<< "$releaseJson")" ; then
@@ -71,14 +72,12 @@ jobs:
           #
           # Process this release
           continue="false"
-          mkdir "${release}"
           ridsAvailable="" && ridsAvailableComma=""
           for rid in $rids ; do
             echo " - $rid"
-            v=${release:1}
             case "${rid}" in
-              linux-x64)  platform="linux_x64" && upstreamFilename="libmsquic.so.$v" && ourFilename="libmsquic-openssl.so" ;;
-              osx)        platform="macos_universal" && upstreamFilename="libmsquic.$v.dylib" && ourFilename="libmsquic-openssl.dylib" ;;
+              linux-x64)  platform="linux_x64" && upstreamFilename="libmsquic.so.$release" && ourFilename="libmsquic-openssl.so" ;;
+              osx)        platform="macos_universal" && upstreamFilename="libmsquic.$release.dylib" && ourFilename="libmsquic-openssl.dylib" ;;
               win-x64)    platform="windows_x64" && upstreamFilename="msquic.dll" && ourFilename="msquic-openssl.dll" ;;
               *)          echo "Do not recognise ${rid}." && exit 1 ;;
             esac
@@ -91,8 +90,8 @@ jobs:
               echo "Downloading $url"
               if wget --quiet "${url}" ; then
                 unzip "${archive}" -d "${platform}"
-                mkdir "${release}/${rid}"
-                finalFilename="${release}/${rid}/${ourFilename}"
+                mkdir -p "${releasePrefix}${release}/${rid}"
+                finalFilename="${releasePrefix}${release}/${rid}/${ourFilename}"
                 mv "${platform}/bin/${upstreamFilename}" "${finalFilename}"
                 sudo chmod +r "${finalFilename}"
                 rm -Rf "${platform}" "${archive}"
@@ -108,8 +107,9 @@ jobs:
 
           if [ "$ridsAvailable" != "" ] ; then
             continue="true"
+            #shellcheck disable=SC2089
             manifest="{ \"version\": \"${release}\", \"gitBranch\": \"${gitBranch}\", \"gitCommit\": \"${gitCommit}\", \"platforms\": [ $ridsAvailable ] }"
-            echo $manifest > manifest.json
+            echo "$manifest" > manifest.json
           else
             continue=false
           fi
@@ -226,7 +226,7 @@ jobs:
           #shellcheck disable=SC2129
           echo "filename=${filename}" >> "$GITHUB_OUTPUT"
           echo "location=${location}" >> "$GITHUB_OUTPUT"
-          echo "ersion=${release#"$releasePrefix"} >> "$GITHUB_OUTPUT" # remove the prefix
+          echo "ersion=${version} >> "$GITHUB_OUTPUT" # no "v" prefix, haha
           echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> "$GITHUB_OUTPUT"
           echo "gitUrl=${gitUrl}" >> "$GITHUB_OUTPUT"
           echo "gitCommit=${gitCommit}" >> "$GITHUB_OUTPUT"
@@ -251,8 +251,8 @@ jobs:
         uses: StirlingLabs/CreateNuSpecAction@main
         with:
           id: ${{ steps.data.outputs.packageName }}
-          version: ${{ steps.data.outputs.ersion }}
-          title: MsQuic runtime for ${{ matrix.rid }} ${{ matrix.version }}
+          version: ${{ matrix.version }}
+          title: MsQuic runtime for ${{ matrix.rid }} ${{ needs.check.outputs.releasePrefix }}${{ matrix.version }}
           description: |
             Platform-specific runtime for MsQuic, Microsoft's C implementation of the IETF QUIC protocol.
           fileSources: ${{ steps.libraries.outputs.download-path }}/${{ steps.data.outputs.location }}
