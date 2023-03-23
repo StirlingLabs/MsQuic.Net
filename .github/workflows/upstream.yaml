@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        release: ${{ fromJson(needs.check.outputs.releases_needed_json) }}
+        release: ${{ fromJSON(needs.check.outputs.releases_needed_json) }}
     runs-on: ubuntu-22.04
     outputs:
       continue: ${{ steps.download.outputs.continue }}
@@ -54,19 +54,22 @@ jobs:
           #
           # Get info about the release being processed
           echo "Processing $release"
-          if ! allReleasesJson="$(jq -c . <<< "$(curl -s "${releasesUrl}")")" ; then
+          if ! allReleasesJson="$( jq -c . <<< "$(curl -s "${releasesUrl}")" )" ; then
             echo "‼️ Problem getting releases: ${allReleasesJson}"
           fi
-          if ! releaseJson="$(jq -r ".[] | select(.tag_name==\"${releasePrefix}${release}\")" <<< "$allReleasesJson")" ; then
+          if ! releaseJson="$( jq -r ".[] | select(.tag_name==\"${releasePrefix}${release}\" )" <<< "$allReleasesJson" )" \
+              || [[ "$releaseJson" == "" ]] ; then
             echo "‼️ Problem getting release info for ${release}: ${releaseJson}"
           fi
-          if ! gitBranch="$(jq -r ".target_commitish" <<< "$releaseJson")" ; then
+          if ! gitBranch="$( jq -r ".target_commitish" <<< "$releaseJson" )" \
+              || [[ "$gitBranch" == "" ]] ; then
             echo "‼️ Problem getting branch: ${gitBranch}"
           fi
-          if ! tagsJson="$(jq -c . <<< "$(curl -s "$tagsUrl")")" ; then
+          if ! tagsJson="$( jq -c . <<< "$(curl -s "$tagsUrl")" )" ; then
             echo "‼️ Problem getting tags: ${tagsJson}"
           fi
-          if ! gitCommit="$(jq -r ".[] | select(.name==\"${release}\") | .commit.sha" <<< "$tagsJson")" ; then
+          if ! gitCommit="$( jq -r ".[] | select(.name==\"${releasePrefix}${release}\" ) | .commit.sha" <<< "$tagsJson")" \
+              || [[ "$gitCommit" == "" ]] ; then
             echo "‼️ Problem getting commit: ${gitCommit}"
           fi
           #
@@ -137,18 +140,33 @@ jobs:
           icon: SL.png
           manifest: ${{ steps.download.outputs.manifest }}
         run: |
-          if [[ -s "${readme}" ]] ; then
-            echo "readme=${readme}" >> $GITHUB_OUTPUT
-          else
-            echo "README Not found at ${readme}"
-          fi
-          if [[ -s "${icon}" ]] ; then
-            echo "icon=${icon}" >> $GITHUB_OUTPUT
-          else
-            echo "Icon Not found at ${icon}"
-          fi
-          [[ -f manifest.json ]] && echo "Manifest already exists" || echo $manifest > manifest.json
-          find .
+          main() {
+            if [[ -s "${readme}" ]] ; then
+              echo "readme=${readme}" >> $GITHUB_OUTPUT
+            else
+              echo "README Not found at ${readme}"
+            fi
+            if [[ -s "${icon}" ]] ; then
+              echo "icon=${icon}" >> $GITHUB_OUTPUT
+            else
+              echo "Icon Not found at ${icon}"
+            fi
+            [[ -f manifest.json ]] && rm -f manifest.json 
+            if checkJson "$platformJson" ; then
+              echo $manifest > manifest.json
+              echo "Wrote manifest.json"
+            fi
+            find .
+          }
+
+          function checkJson() {
+            local json="$1" ; local out
+            if ! out="$( echo "$json" | jq -c '.' )" ; then
+              echo "‼️ Error: Failed to verify json: $out" >&2
+              return 1
+            fi
+          }
+          main "$@" ; exit $?
 
       - name: Upload Ancillaries
         if: steps.download.outputs.continue == 'true'
@@ -170,8 +188,8 @@ jobs:
       fail-fast: true
       max-parallel: 3
       matrix:
-        version: ${{ fromJson(needs.check.outputs.releasesNeeded) }}
-        rid: ${{ fromJson(needs.check.outputs.ridArray) }}
+        version: ${{ fromJSON(needs.check.outputs.releases_needed_json) }}
+        rid: ${{ fromJSON(needs.check.outputs.rids_json) }}
     runs-on: ubuntu-22.04
     steps:
       - name: Get Ancillaries
@@ -189,19 +207,19 @@ jobs:
           releasePrefix: ${{ needs.check.outputs.releasePrefix }}
           rid: ${{ matrix.rid }}
           manifest: ${{steps.ancillaries.outputs.download-path}}/manifest.json
-          manifest_path: ${{steps.ancillaries.outputs.download-path}}
           this_repo_url: ${{ github.repositoryUrl }}
           this_repo_commit: ${{ github.sha }}
           this_repo_branch: ${{ github.ref_name }}
         run: |
           if [[ ! -s "$manifest" ]] ; then
-            echo "Manifest does not exist at $manifest"
+            echo "Manifest does not exist yet at $manifest"
             ls -la
             unzip ./*.zip
             ls -la
             [[ ! -s "$manifest" ]] && exit 1
+            echo "Manifest now exists at $manifest"
           fi
-          if ! ridJson=$(jq -c ".platforms[] | select(.rid==\"${rid}\")" "$manifest") ; then
+          if ! ridJson="$( jq -c ".platforms[] | select(.rid==\"${rid}\")" "$manifest" )" ; then
             echo -e "Problem getting JSON for $rid from $manifest:\n$ridJson"
             #exit 1
           fi
@@ -209,12 +227,29 @@ jobs:
             echo "No manifest for $rid, so no need to continue."
             continue="false"
           else
-            gitCommit=$(jq -r ".gitCommit" "$manifest") || echo "Problem getting gitCommit from manifest: $gitCommit"
-            gitBranch=$(jq -r ".gitBranch" "$manifest") || echo "Problem getting gitBranch from manifest: $gitBranch"
-            location=$(jq -r ".location" <<< "$ridJson") || echo "Problem getting location from manifest: $location"
-            filename=$(jq -r ".filename" <<< "$ridJson") || echo "Problem getting filename from manifest: $filename"
+            echo -n "Reading details; "
+            if gitCommit="$( jq -r ".gitCommit" "$manifest" )" ; then
+              echo -n "git commit ${gitCommit}, "
+            else
+              echo "Problem getting gitCommit from manifest: $gitCommit"
+            fi
+            if gitBranch="$( jq -r ".gitBranch" "$manifest" )" ; then
+              echo -n "git branch ${gitBranch}, "
+            else
+              echo "Problem getting gitBranch from manifest: $gitBranch"
+            fi
+            if location="$( jq -r ".location" <<< "$ridJson" )" ; then
+              echo -n "location ${location}, "
+            else
+              echo "Problem getting location from manifest: $location"
+            fi
+            if filename="$( jq -r ".filename" <<< "$ridJson" )" ; then
+              echo -n "filename ${filename}, "
+            else
+              echo "Problem getting filename from manifest: $filename"
+            fi
+            echo "done."
             continue="true"
-            echo "gitCommit ${gitCommit}, gitBranch ${gitBranch}, location ${location}, filename ${filename}"
           fi
           # If this is not a produciton build (so it will use our GitHub store), we have to lie about where it comes from
           if [[ "$debug" == "true" ]] ; then
@@ -226,7 +261,6 @@ jobs:
           #shellcheck disable=SC2129
           echo "filename=${filename}" >> "$GITHUB_OUTPUT"
           echo "location=${location}" >> "$GITHUB_OUTPUT"
-          echo "ersion=${version} >> "$GITHUB_OUTPUT" # no "v" prefix, haha
           echo "packageName=StirlingLabs.MsQuic.Bindings.runtime.${rid}.openssl" >> "$GITHUB_OUTPUT"
           echo "gitUrl=${gitUrl}" >> "$GITHUB_OUTPUT"
           echo "gitCommit=${gitCommit}" >> "$GITHUB_OUTPUT"
