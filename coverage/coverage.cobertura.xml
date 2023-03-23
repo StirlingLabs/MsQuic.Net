@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.1889" branch-rate="0.0368" version="1.9" timestamp="1679554346" lines-covered="72" lines-valid="381" branches-covered="12" branches-valid="326">
+<coverage line-rate="0.1863" branch-rate="0.0368" version="1.9" timestamp="1679566079" lines-covered="71" lines-valid="381" branches-covered="12" branches-valid="326">
   <sources />
   <packages>
-    <package name="StirlingLabs.MsQuic.Bindings" line-rate="0.1889" branch-rate="0.0368" complexity="520">
+    <package name="StirlingLabs.MsQuic.Bindings" line-rate="0.1863" branch-rate="0.0368" complexity="520">
       <classes>
         <class name="StirlingLabs.MsQuic.Bindings.QUIC_BUFFER" filename="/home/runner/work/MsQuic.Net/MsQuic.Net/StirlingLabs.MsQuic.Bindings/Compatibility/QUIC_BUFFER.cs" line-rate="0.11109999999999999" branch-rate="0" complexity="9">
           <methods>
@@ -108,13 +108,13 @@
             </method>
             <method name="StatusSucceeded" signature="(System.Int32)" line-rate="0.6666" branch-rate="0.5" complexity="2">
               <lines>
-                <line number="53" hits="307" branch="True" condition-coverage="50% (1/2)">
+                <line number="53" hits="306" branch="True" condition-coverage="50% (1/2)">
                   <conditions>
                     <condition number="5" type="jump" coverage="50%" />
                   </conditions>
                 </line>
                 <line number="55" hits="0" branch="False" />
-                <line number="59" hits="307" branch="False" />
+                <line number="59" hits="306" branch="False" />
               </lines>
             </method>
             <method name="StatusFailed" signature="(System.Int32)" line-rate="0.6666" branch-rate="0.5" complexity="2">
@@ -130,7 +130,7 @@
             </method>
             <method name="get_QUIC_STATUS_SUCCESS" signature="()" line-rate="1" branch-rate="0.5" complexity="6">
               <lines>
-                <line number="75" hits="259" branch="True" condition-coverage="50% (3/6)">
+                <line number="75" hits="267" branch="True" condition-coverage="50% (3/6)">
                   <conditions>
                     <condition number="5" type="jump" coverage="50%" />
                     <condition number="12" type="jump" coverage="50%" />
@@ -549,13 +549,13 @@
             </line>
             <line number="47" hits="0" branch="False" />
             <line number="49" hits="28" branch="False" />
-            <line number="53" hits="307" branch="True" condition-coverage="50% (1/2)">
+            <line number="53" hits="306" branch="True" condition-coverage="50% (1/2)">
               <conditions>
                 <condition number="5" type="jump" coverage="50%" />
               </conditions>
             </line>
             <line number="55" hits="0" branch="False" />
-            <line number="59" hits="307" branch="False" />
+            <line number="59" hits="306" branch="False" />
             <line number="65" hits="71" branch="True" condition-coverage="50% (1/2)">
               <conditions>
                 <condition number="5" type="jump" coverage="50%" />
@@ -563,7 +563,7 @@
             </line>
             <line number="67" hits="0" branch="False" />
             <line number="71" hits="71" branch="False" />
-            <line number="75" hits="259" branch="True" condition-coverage="50% (3/6)">
+            <line number="75" hits="267" branch="True" condition-coverage="50% (3/6)">
               <conditions>
                 <condition number="5" type="jump" coverage="50%" />
                 <condition number="12" type="jump" coverage="50%" />
@@ -941,7 +941,7 @@
             </method>
             <method name="IsSuccess" signature="(System.Int32)" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="68" hits="122" branch="False" />
+                <line number="68" hits="121" branch="False" />
               </lines>
             </method>
             <method name="IsFailure" signature="(System.Int32)" line-rate="1" branch-rate="1" complexity="1">
@@ -989,7 +989,7 @@
             <line number="54" hits="15" branch="False" />
             <line number="59" hits="38" branch="False" />
             <line number="63" hits="0" branch="False" />
-            <line number="68" hits="122" branch="False" />
+            <line number="68" hits="121" branch="False" />
             <line number="73" hits="28" branch="False" />
             <line number="79" hits="200" branch="True" condition-coverage="50% (1/2)">
               <conditions>
@@ -2418,16 +2418,16 @@
             <line number="1874" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="StirlingLabs.MsQuic.Bindings.QUIC_CONNECTION_EVENT" filename="/home/runner/work/MsQuic.Net/MsQuic.Net/StirlingLabs.MsQuic.Bindings/Imported/msquic_generated.cs" line-rate="0.8" branch-rate="1" complexity="15">
+        <class name="StirlingLabs.MsQuic.Bindings.QUIC_CONNECTION_EVENT" filename="/home/runner/work/MsQuic.Net/MsQuic.Net/StirlingLabs.MsQuic.Bindings/Imported/msquic_generated.cs" line-rate="0.7333" branch-rate="1" complexity="15">
           <methods>
             <method name="get_CONNECTED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
                 <line number="1911" hits="38" branch="False" />
               </lines>
             </method>
-            <method name="get_SHUTDOWN_INITIATED_BY_TRANSPORT" signature="()" line-rate="1" branch-rate="1" complexity="1">
+            <method name="get_SHUTDOWN_INITIATED_BY_TRANSPORT" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="1919" hits="1" branch="False" />
+                <line number="1919" hits="0" branch="False" />
               </lines>
             </method>
             <method name="get_SHUTDOWN_INITIATED_BY_PEER" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -2462,12 +2462,12 @@
             </method>
             <method name="get_IDEAL_PROCESSOR_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1975" hits="26" branch="False" />
+                <line number="1975" hits="27" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_STATE_CHANGED" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="1983" hits="91" branch="False" />
+                <line number="1983" hits="99" branch="False" />
               </lines>
             </method>
             <method name="get_DATAGRAM_RECEIVED" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -2498,15 +2498,15 @@
           </methods>
           <lines>
             <line number="1911" hits="38" branch="False" />
-            <line number="1919" hits="1" branch="False" />
+            <line number="1919" hits="0" branch="False" />
             <line number="1927" hits="4" branch="False" />
             <line number="1935" hits="0" branch="False" />
             <line number="1943" hits="0" branch="False" />
             <line number="1951" hits="0" branch="False" />
             <line number="1959" hits="15" branch="False" />
             <line number="1967" hits="20" branch="False" />
-            <line number="1975" hits="26" branch="False" />
-            <line number="1983" hits="91" branch="False" />
+            <line number="1975" hits="27" branch="False" />
+            <line number="1983" hits="99" branch="False" />
             <line number="1991" hits="6" branch="False" />
             <line number="1999" hits="12" branch="False" />
             <line number="2007" hits="1" branch="False" />
