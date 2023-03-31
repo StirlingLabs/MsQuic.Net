@@ -296,6 +296,7 @@ jobs:
           gitUrl: ${{ steps.data.outputs.gitUrl }}
           gitBranch: ${{ steps.data.outputs.gitBranch }}
           gitCommit: ${{ steps.data.outputs.gitCommit }}
+          targetFrameworks: net6.0;netstandard2.0;netstandard2.1
 
       - name: Build NuPkg
         if: steps.data.outputs.continue == 'true'
