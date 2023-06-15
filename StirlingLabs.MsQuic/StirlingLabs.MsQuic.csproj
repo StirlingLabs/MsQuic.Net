@@ -37,7 +37,7 @@
         <PackageReference Include="StirlingLabs.sockaddr.Net" Version="22.10.0" />
         <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
         <PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
-        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.1" />
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.3" />
         <PackageReference Include="ZString" Version="2.4.4" />
     </ItemGroup>
 
