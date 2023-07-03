@@ -439,7 +439,7 @@ jobs:
           cat "$file"
 
       - name: Create PR
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v5
         with:
           commit-message: Update to incorporate upstream changes in ${{ steps.retrieve.outputs.version }}
           base: main
