@@ -430,12 +430,12 @@ jobs:
             echo "Version not set, can't continue."
             exit 1
           fi
-          file="${target}/${target}.csproj"
-          [[ -f "$file" ]] && echo -n "Editing $file ... " || echo -n "Can't find $file ... "
-          sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${rawVersion}\4/" "$file" && echo "done." || echo "failed‼️"
-          file="MsQuicVersionOnly.proj"
+          # file="${target}/${target}.csproj"
+          # [[ -f "$file" ]] && echo -n "Editing $file ... " || echo -n "Can't find $file ... "
+          # sed -i "s/\(\bStirlingLabs\.MsQuic\.Bindings\.runtime\.\(linux\|osx\|win\).*\.openssl.*Version=\"\)\(.*\)\(\"\)/\1${rawVersion}\4/" "$file" && echo "done." || echo "failed‼️"
+          file="MsQuicBindingsVersionOnly.proj"
           [[ -f "$file" ]] && echo -n "Replacing $file ... " || echo -n "Creating $file ... "
-          echo "<Project><PropertyGroup><Version>${version:1}</Version></PropertyGroup></Project>" > "$file" && echo "done." || echo "failed‼️"
+          echo "<Project><PropertyGroup><StirlingLabsMsQuicRuntimeVersion>${version:1}</StirlingLabsMsQuicRuntimeVersion></PropertyGroup></Project>" > "$file" && echo "done." || echo "failed‼️"
           cat "$file"
 
       - name: Create PR

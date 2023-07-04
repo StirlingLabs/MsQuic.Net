@@ -1,5 +1,5 @@
 <Project>
-    <Import Project="$(MSBuildThisFileDirectory)MsQuicVersionOnly.proj" />
+    <Import Project="$(MSBuildThisFileDirectory)MsQuicBindingsVersionOnly.proj" />
     <PropertyGroup>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/StirlingLabs/MsQuic.Net.git</RepositoryUrl>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
     <PropertyGroup>
+        <StirlingLabsLibsaVersionMin>22.9.0</StirlingLabsLibsaVersionMin>
         <StirlingLabsMsQuicVersion>@(PackageReference->WithMetadataValue('Identity','StirlingLabs.MsQuic.Bindings')->Metadata('Version'))</StirlingLabsMsQuicVersion>
         <StirlingLabsMsQuicVersion Condition="'$(StirlingLabsMsQuicVersion)'==''">*</StirlingLabsMsQuicVersion>
         <StirlingLabsMsQuicSelectRuntimeId Condition="'$(StirlingLabsMsQuicSelectRuntimeId)'==''">$(RuntimeIdentifier)</StirlingLabsMsQuicSelectRuntimeId>
@@ -22,23 +23,23 @@
     </PropertyGroup>
 
     <ItemGroup Condition="!$(StirlingLabsMsQuicSelectAllRuntimes) AND !$(StirlingLabsMsQuicSelectRuntimeId.StartsWith('linux'))">
-        <PackageReference Remove="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.libsa"/>
+        <PackageReference Remove="StirlingLabs.sockaddr.Net.runtime.linux-x64.libsa"/>
     </ItemGroup>
     <ItemGroup Condition="$(StirlingLabsMsQuicSelectAllRuntimes) OR $(StirlingLabsMsQuicSelectRuntimeId.StartsWith('linux'))">
-        <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.libsa" Version="$(StirlingLabsMsQuicVersion)"/>
+        <PackageReference Include="StirlingLabs.sockaddr.Net.runtime.linux-x64.libsa" Version="($(StirlingLabsLibsaVersionMin),$(StirlingLabsMsQuicVersion)]"/>
     </ItemGroup>
 
     <ItemGroup Condition="!$(StirlingLabsMsQuicSelectAllRuntimes) AND !$(StirlingLabsMsQuicSelectRuntimeId.StartsWith('osx'))">
-        <ProjectReference Remove="StirlingLabs.MsQuic.Bindings.runtime.osx.libsa"/>
+        <ProjectReference Remove="StirlingLabs.sockaddr.Net.runtime.osx.libsa"/>
     </ItemGroup>
     <ItemGroup Condition="$(StirlingLabsMsQuicSelectAllRuntimes) OR $(StirlingLabsMsQuicSelectRuntimeId.StartsWith('osx'))">
-        <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.osx.libsa" Version="$(StirlingLabsMsQuicVersion)"/>
+        <PackageReference Include="StirlingLabs.sockaddr.Net.runtime.osx.libsa" Version="($(StirlingLabsLibsaVersionMin),$(StirlingLabsMsQuicVersion)]"/>
     </ItemGroup>
 
     <ItemGroup Condition="!$(StirlingLabsMsQuicSelectAllRuntimes) AND !$(StirlingLabsMsQuicSelectRuntimeId.StartsWith('win'))">
-        <PackageReference Remove="StirlingLabs.MsQuic.Bindings.runtime.win-x64.libsa"/>
+        <PackageReference Remove="StirlingLabs.sockaddr.Net.runtime.win-x64.libsa"/>
     </ItemGroup>
     <ItemGroup Condition="$(StirlingLabsMsQuicSelectAllRuntimes) OR $(StirlingLabsMsQuicSelectRuntimeId.StartsWith('win'))">
-        <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.win-x64.libsa" Version="$(StirlingLabsMsQuicVersion)"/>
+        <PackageReference Include="StirlingLabs.sockaddr.Net.runtime.win-x64.libsa" Version="($(StirlingLabsLibsaVersionMin),$(StirlingLabsMsQuicVersion)]"/>
     </ItemGroup>
 </Project>

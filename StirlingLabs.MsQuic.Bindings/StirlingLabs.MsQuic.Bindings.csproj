@@ -30,19 +30,19 @@
         <PackageReference Include="System.Memory" Version="4.5.4" />
     </ItemGroup>
 
+    <ImportGroup>
+        <Import Project="../MsQuicVersion.proj" />
+    </ImportGroup>
+
     <ItemGroup>
       <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" PrivateAssets="All" />
       <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
       <PackageReference Include="StirlingLabs.Utilities.NativeLibrary" Version="22.9.1" />
       <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.openssl" Version="2.2.2" />
-      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.osx.openssl" Version="2.2.2" />
-      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl" Version="2.2.2" />
+      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.linux-x64.openssl" Version="$(StirlingLabsMsQuicRuntimeVersion)" />
+      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.osx.openssl" Version="$(StirlingLabsMsQuicRuntimeVersion)" />
+      <PackageReference Include="StirlingLabs.MsQuic.Bindings.runtime.win-x64.openssl" Version="$(StirlingLabsMsQuicRuntimeVersion)" />
     </ItemGroup>
-
-    <ImportGroup>
-        <Import Project="../MsQuicVersion.proj" />
-    </ImportGroup>
 
     <ItemGroup>
         <None Include="StirlingLabs.MsQuic.Bindings.props">
