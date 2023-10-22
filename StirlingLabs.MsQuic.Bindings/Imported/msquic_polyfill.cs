@@ -79,7 +79,7 @@ namespace StirlingLabs.MsQuic.Bindings.Polyfill
     public unsafe delegate int MsQuicConnectionCallbackDelegate(QUIC_HANDLE* Handle, void* Context, QUIC_CONNECTION_EVENT* Event);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public unsafe delegate int MsQuicStreamCallbackDelegate(QUIC_HANDLE* Handle, void* Context, QUIC_CONNECTION_EVENT* Event);
+    public unsafe delegate int MsQuicStreamCallbackDelegate(QUIC_HANDLE* Handle, void* Context, QUIC_STREAM_EVENT* Event);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public unsafe delegate int MsQuicListenerCallbackDelegate(QUIC_HANDLE* Handle, void* Context, QUIC_LISTENER_EVENT* Event);
