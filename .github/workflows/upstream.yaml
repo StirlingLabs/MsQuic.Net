@@ -196,7 +196,7 @@ jobs:
     steps:
       - name: Get Ancillaries
         id: ancillaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: Ancillaries-${{ matrix.version }}
 
@@ -272,7 +272,7 @@ jobs:
       - name: Get Libraries
         if: steps.data.outputs.continue == 'true'
         id: libraries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: Libraries-${{ matrix.version }}
 
